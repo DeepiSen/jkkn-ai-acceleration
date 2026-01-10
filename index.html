@@ -625,7 +625,145 @@ async function testConnection() {
 }
 
 // =====================================================
-// QUESTIONS
+// ANSWER KEYS - Unique validation for each question
+// =====================================================
+const ANSWER_KEYS = {
+    // CSE Questions (80) - MCP Server Implementation
+    "CSE_01": { title: "E-Commerce Customer Support MCP", requiredTools: ["orderLookup", "returnProcess", "paymentVerify", "customerQuery", "trackOrder"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "order", "return", "payment", "customer", "query"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["getOrderStatus", "processReturn", "verifyPayment", "handleQuery"] },
+    "CSE_02": { title: "Banking Chatbot System", requiredTools: ["balanceInquiry", "transactionHistory", "cardServices", "loanInfo", "fraudReport"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "balance", "transaction", "account", "secure", "auth"], requiredPatterns: ["try", "catch", "if", "return", "async", "await", "const", "let"], minCodeLength: 800, expectedFunctions: ["getBalance", "getTransactions", "reportFraud", "authenticate"] },
+    "CSE_03": { title: "Healthcare Appointment Scheduler", requiredTools: ["scheduleAppointment", "cancelAppointment", "getDoctorAvailability", "patientRouting", "sendReminder"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "appointment", "doctor", "patient", "schedule", "department"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["bookSlot", "checkAvailability", "cancelBooking", "sendNotification"] },
+    "CSE_04": { title: "Real Estate Property Finder", requiredTools: ["searchProperties", "getPropertyDetails", "comparePrices", "scheduleTour", "getPriceTrends"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "property", "location", "price", "budget", "amenities"], requiredPatterns: ["try", "catch", "if", "return", "filter", "map"], minCodeLength: 800, expectedFunctions: ["searchByLocation", "filterByBudget", "getDetails", "bookTour"] },
+    "CSE_05": { title: "HR Recruitment Assistant", requiredTools: ["parseResume", "matchJobs", "scoreCandidate", "scheduleInterview", "getApplicationStatus"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "resume", "candidate", "job", "skill", "interview"], requiredPatterns: ["try", "catch", "if", "return", "async", "await", "score"], minCodeLength: 800, expectedFunctions: ["extractSkills", "matchProfile", "rankCandidates", "sendInvite"] },
+    "CSE_06": { title: "Restaurant Order Management", requiredTools: ["createOrder", "updateOrderStatus", "getKitchenCapacity", "estimateDelivery", "syncMenu"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "order", "kitchen", "delivery", "menu", "restaurant"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["placeOrder", "trackOrder", "updateStatus", "calculateETA"] },
+    "CSE_07": { title: "Travel Booking Concierge", requiredTools: ["searchFlights", "bookHotel", "suggestActivities", "createItinerary", "optimizeBudget"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "flight", "hotel", "travel", "booking", "itinerary"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["findFlights", "compareHotels", "planTrip", "calculateCost"] },
+    "CSE_08": { title: "Insurance Claim Processor", requiredTools: ["submitClaim", "verifyDocuments", "detectFraud", "calculateSettlement", "getClaimStatus"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "claim", "insurance", "document", "fraud", "settlement"], requiredPatterns: ["try", "catch", "if", "return", "async", "await", "validate"], minCodeLength: 800, expectedFunctions: ["processClaim", "validateDocs", "checkFraud", "approveClaim"] },
+    "CSE_09": { title: "Course Recommender System", requiredTools: ["assessSkills", "recommendCourses", "createLearningPath", "trackProgress", "suggestCertification"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "course", "skill", "learning", "recommendation", "career"], requiredPatterns: ["try", "catch", "if", "return", "async", "await", "filter"], minCodeLength: 800, expectedFunctions: ["getRecommendations", "buildPath", "updateProgress", "matchGoals"] },
+    "CSE_10": { title: "Inventory Management Assistant", requiredTools: ["checkStock", "forecastDemand", "createReorder", "identifyDeadStock", "manageSupplier"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "inventory", "stock", "demand", "reorder", "supplier"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["getStockLevel", "predictDemand", "placeOrder", "alertLowStock"] },
+    "CSE_11": { title: "Log Analysis System", requiredTools: ["parseLog", "detectPattern", "findAnomaly", "generateAlert", "suggestRootCause"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "log", "error", "pattern", "anomaly", "alert"], requiredPatterns: ["try", "catch", "if", "return", "async", "await", "regex", "match"], minCodeLength: 800, expectedFunctions: ["analyzeLogs", "detectErrors", "findPatterns", "createAlert"] },
+    "CSE_12": { title: "Social Media Analytics", requiredTools: ["analyzeSentiment", "trackEngagement", "compareCompetitors", "recommendContent", "generateReport"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "sentiment", "engagement", "social", "analytics", "content"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["getSentiment", "calculateEngagement", "trackMetrics", "suggestPosts"] },
+    "CSE_13": { title: "Financial Report Analyzer", requiredTools: ["parseReport", "extractMetrics", "analyzetrends", "compareIndustry", "generateSummary"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "financial", "revenue", "profit", "expense", "report"], requiredPatterns: ["try", "catch", "if", "return", "async", "await", "calculate"], minCodeLength: 800, expectedFunctions: ["extractRevenue", "analyzeProfitability", "compareBenchmark", "createSummary"] },
+    "CSE_14": { title: "Code Review Assistant", requiredTools: ["checkStyle", "detectBugs", "findVulnerabilities", "suggestImprovements", "generateReport"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "code", "review", "bug", "security", "style"], requiredPatterns: ["try", "catch", "if", "return", "async", "await", "lint"], minCodeLength: 800, expectedFunctions: ["analyzeCode", "findBugs", "checkSecurity", "suggestFix"] },
+    "CSE_15": { title: "Email Campaign Manager", requiredTools: ["createCampaign", "segmentAudience", "scheduleEmail", "trackPerformance", "runABTest"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "email", "campaign", "segment", "subscriber", "open"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["sendCampaign", "createSegment", "trackOpens", "analyzeClicks"] },
+    "CSE_16": { title: "API Gateway Monitor", requiredTools: ["checkHealth", "trackLatency", "monitorErrors", "enforceRateLimit", "generateMetrics"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "api", "endpoint", "latency", "error", "rate"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["getHealth", "measureLatency", "trackErrors", "limitRate"] },
+    "CSE_17": { title: "Document Q&A System", requiredTools: ["indexDocument", "searchContent", "answerQuestion", "findGaps", "getCitations"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "document", "search", "answer", "knowledge", "query"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["indexDocs", "searchKnowledge", "generateAnswer", "provideCitation"] },
+    "CSE_18": { title: "Expense Report Processor", requiredTools: ["submitExpense", "scanReceipt", "checkPolicy", "routeApproval", "trackReimbursement"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "expense", "receipt", "policy", "approval", "reimburse"], requiredPatterns: ["try", "catch", "if", "return", "async", "await", "validate"], minCodeLength: 800, expectedFunctions: ["processExpense", "validateReceipt", "checkCompliance", "submitForApproval"] },
+    "CSE_19": { title: "Meeting Scheduler Agent", requiredTools: ["findAvailability", "bookMeeting", "sendInvite", "bookRoom", "resolveConflict"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "meeting", "calendar", "room", "invite", "schedule"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["checkCalendar", "createMeeting", "reserveRoom", "notifyAttendees"] },
+    "CSE_20": { title: "Feedback Analysis System", requiredTools: ["collectFeedback", "analyzeSentiment", "extractTopics", "identifyTrends", "suggestResponse"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "feedback", "review", "sentiment", "topic", "trend"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["processFeedback", "getSentiment", "findTopics", "generateResponse"] },
+    "CSE_21": { title: "CRM Integration Hub", requiredTools: ["syncContacts", "syncDeals", "detectDuplicates", "mergeRecords", "getUnifiedView"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "crm", "contact", "deal", "sync", "salesforce"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["importContacts", "exportDeals", "findDuplicates", "unifyData"] },
+    "CSE_22": { title: "DevOps Pipeline Orchestrator", requiredTools: ["triggerBuild", "deployApp", "runTests", "rollbackDeploy", "getStatus"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "build", "deploy", "pipeline", "ci", "cd"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["startPipeline", "executeDeploy", "checkTests", "performRollback"] },
+    "CSE_23": { title: "Multi-Cloud Resource Manager", requiredTools: ["listResources", "optimizeCost", "provisionInstance", "checkCompliance", "generateReport"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "cloud", "aws", "azure", "resource", "cost"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["getResources", "analyzeCost", "createInstance", "auditCompliance"] },
+    "CSE_24": { title: "Payment Gateway Aggregator", requiredTools: ["processPayment", "initiateRefund", "manageSubscription", "reconcileTransactions", "getPaymentStatus"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "payment", "refund", "subscription", "transaction", "gateway"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["chargeCard", "refundPayment", "createSubscription", "verifyTransaction"] },
+    "CSE_25": { title: "Notification Hub System", requiredTools: ["sendEmail", "sendSMS", "sendPush", "manageTemplate", "trackDelivery"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "notification", "email", "sms", "push", "template"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["sendNotification", "createTemplate", "checkDelivery", "managePreferences"] },
+    "CSE_26": { title: "Warehouse Management System", requiredTools: ["trackInventory", "optimizePicking", "processReceiving", "manageShipping", "locateItem"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "warehouse", "inventory", "pick", "ship", "receive"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["findItem", "createPickList", "processShipment", "updateInventory"] },
+    "CSE_27": { title: "Content Management System", requiredTools: ["createContent", "submitForApproval", "publishContent", "schedulePost", "optimizeSEO"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "content", "publish", "approval", "seo", "schedule"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["saveContent", "reviewContent", "publishPost", "analyzeSEO"] },
+    "CSE_28": { title: "Fleet Management System", requiredTools: ["trackVehicle", "optimizeRoute", "scheduleMaintenance", "assignDriver", "generateReport"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "fleet", "vehicle", "route", "driver", "gps"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["getLocation", "planRoute", "scheduleService", "trackDriver"] },
+    "CSE_29": { title: "Event Management Platform", requiredTools: ["createEvent", "registerAttendee", "issueTicket", "checkIn", "manageSpeaker"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "event", "registration", "ticket", "attendee", "speaker"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["setupEvent", "processRegistration", "generateTicket", "recordAttendance"] },
+    "CSE_30": { title: "Subscription Management System", requiredTools: ["createSubscription", "manageBilling", "trackUsage", "predictChurn", "handleRenewal"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "subscription", "billing", "plan", "churn", "renewal"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["startSubscription", "processBilling", "checkUsage", "cancelSubscription"] },
+    "CSE_31": { title: "Image Analysis Pipeline", requiredTools: ["detectObjects", "classifyImage", "extractText", "assessQuality", "processsBatch"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "image", "detect", "classify", "ocr", "quality"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["analyzeImage", "findObjects", "readText", "checkQuality"] },
+    "CSE_32": { title: "NLP Processing Hub", requiredTools: ["extractEntities", "summarizeText", "translateContent", "analyzeSentiment", "classifyIntent"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "nlp", "entity", "summarize", "translate", "sentiment"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["processText", "findEntities", "createSummary", "detectLanguage"] },
+    "CSE_33": { title: "Recommendation Engine", requiredTools: ["getRecommendations", "trackInteraction", "updatePreferences", "runABTest", "explainRecommendation"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "recommend", "user", "item", "collaborative", "content"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["generateRecommendations", "recordClick", "updateModel", "personalizeResults"] },
+    "CSE_34": { title: "Fraud Detection System", requiredTools: ["scoreTransaction", "detectPattern", "createAlert", "manageCase", "updateModel"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "fraud", "transaction", "score", "alert", "pattern"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["analyzeTransaction", "calculateRisk", "flagFraud", "investigateCase"] },
+    "CSE_35": { title: "Chatbot Training Pipeline", requiredTools: ["classifyIntent", "extractEntities", "manageFlow", "trainModel", "evaluatePerformance"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "chatbot", "intent", "entity", "train", "conversation"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["detectIntent", "parseEntities", "generateResponse", "improveModel"] },
+    "CSE_36": { title: "Predictive Analytics Platform", requiredTools: ["ingestData", "trainModel", "servePrediction", "monitorDrift", "explainPrediction"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "predict", "model", "train", "data", "analytics"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["loadData", "buildModel", "makePrediction", "trackAccuracy"] },
+    "CSE_37": { title: "Speech Processing Service", requiredTools: ["transcribeSpeech", "generateSpeech", "identifySpeaker", "detectEmotion", "translateSpeech"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "speech", "audio", "transcribe", "voice", "emotion"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["convertToText", "convertToSpeech", "recognizeSpeaker", "analyzeEmotion"] },
+    "CSE_38": { title: "Knowledge Graph Query System", requiredTools: ["linkEntities", "extractRelations", "queryGraph", "inferFacts", "visualizeGraph"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "graph", "entity", "relation", "knowledge", "query"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["findEntity", "getRelations", "runQuery", "discoverFacts"] },
+    "CSE_39": { title: "Anomaly Detection Service", requiredTools: ["detectAnomaly", "analyzeTimeSeries", "createAlert", "adjustSeason", "findRootCause"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "anomaly", "timeseries", "detect", "alert", "threshold"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["analyzeData", "findAnomalies", "sendAlert", "investigateCause"] },
+    "CSE_40": { title: "Data Quality Monitor", requiredTools: ["validateSchema", "checkCompleteness", "enforceRules", "scoreQuality", "trackLineage"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "data", "quality", "schema", "validation", "completeness"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["checkSchema", "validateData", "measureQuality", "reportIssues"] },
+    "CSE_41": { title: "Task Automation Engine", requiredTools: ["defineWorkflow", "setTrigger", "executeAction", "handleError", "scheduleTask"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "workflow", "automation", "trigger", "task", "execute"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["createWorkflow", "runTask", "handleFailure", "logExecution"] },
+    "CSE_42": { title: "Form Processing System", requiredTools: ["detectForm", "extractFields", "validateData", "mapToSchema", "exportResults"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "form", "field", "extract", "ocr", "document"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["parseForm", "readFields", "validateInput", "saveData"] },
+    "CSE_43": { title: "Test Automation Framework", requiredTools: ["manageTestCase", "runTests", "analyzeResults", "reportCoverage", "trackRegression"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "test", "automation", "coverage", "result", "regression"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["executeTests", "collectResults", "generateReport", "trackBugs"] },
+    "CSE_44": { title: "Compliance Monitoring System", requiredTools: ["manageRules", "monitorTransactions", "generateAlert", "createReport", "trackAudit"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "compliance", "rule", "monitor", "audit", "regulatory"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["checkCompliance", "detectViolation", "fileReport", "maintainAudit"] },
+    "CSE_45": { title: "Contract Analysis System", requiredTools: ["extractClauses", "identifyRisks", "compareContracts", "trackObligations", "manageTemplates"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "contract", "clause", "risk", "legal", "obligation"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["parseContract", "findClauses", "assessRisk", "trackDeadlines"] },
+    "CSE_46": { title: "Infrastructure as Code Manager", requiredTools: ["manageTemplate", "detectDrift", "estimateCost", "validateConfig", "deployInfra"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "terraform", "infrastructure", "deploy", "config", "drift"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["applyTemplate", "checkDrift", "calculateCost", "validateSyntax"] },
+    "CSE_47": { title: "Database Migration Assistant", requiredTools: ["analyzeSchema", "mapData", "executeMigration", "validateMigration", "rollbackChanges"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "database", "migration", "schema", "data", "rollback"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["compareSchemas", "migrateData", "verifyIntegrity", "revertChanges"] },
+    "CSE_48": { title: "Secret Management System", requiredTools: ["storeSecret", "rotateSecret", "manageAccess", "auditUsage", "generateSecret"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "secret", "vault", "rotate", "access", "encrypt"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["saveSecret", "getSecret", "rotateCredential", "logAccess"] },
+    "CSE_49": { title: "Feature Flag Manager", requiredTools: ["createFlag", "setTargeting", "rolloutFeature", "trackAnalytics", "killSwitch"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "feature", "flag", "rollout", "targeting", "toggle"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["enableFlag", "disableFlag", "setRules", "measureImpact"] },
+    "CSE_50": { title: "Incident Management System", requiredTools: ["aggregateAlerts", "routeOnCall", "escalateIncident", "runRunbook", "trackSLA"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "incident", "alert", "oncall", "escalate", "runbook"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["createIncident", "notifyTeam", "executeRunbook", "resolveIncident"] },
+    "CSE_51": { title: "Product Catalog Manager", requiredTools: ["manageCategory", "handleAttributes", "optimizeSearch", "bulkUpdate", "syncInventory"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "product", "catalog", "category", "attribute", "search"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["addProduct", "updateCategory", "indexSearch", "processsBulk"] },
+    "CSE_52": { title: "Shopping Cart Service", requiredTools: ["addToCart", "updateQuantity", "applyCoupon", "calculateTotal", "checkInventory"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "cart", "item", "quantity", "price", "coupon"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["addItem", "removeItem", "getTotal", "validateCoupon"] },
+    "CSE_53": { title: "Order Processing Pipeline", requiredTools: ["validateOrder", "capturePayment", "routeFulfillment", "trackStatus", "handleReturn"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "order", "payment", "fulfillment", "status", "shipping"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["createOrder", "processPayment", "shipOrder", "updateStatus"] },
+    "CSE_54": { title: "Pricing Engine Service", requiredTools: ["calculatePrice", "trackCompetitor", "managePromotion", "optimizeMargin", "applyDiscount"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "price", "discount", "margin", "competitor", "dynamic"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["getPrice", "setDiscount", "analyzeCompetitor", "optimizePrice"] },
+    "CSE_55": { title: "Review Management System", requiredTools: ["collectReview", "moderateContent", "analyzeSentiment", "generateResponse", "detectFake"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "review", "rating", "sentiment", "moderate", "fake"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["submitReview", "approveReview", "respondToReview", "aggregateRatings"] },
+    "CSE_56": { title: "Seller Onboarding Platform", requiredTools: ["verifyKYC", "setupCatalog", "provideTraining", "trackPerformance", "managePayout"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "seller", "kyc", "onboard", "catalog", "payout"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["registerSeller", "verifyDocuments", "setupStore", "processPayout"] },
+    "CSE_57": { title: "Promotion Engine", requiredTools: ["createCampaign", "setTargeting", "controlBudget", "trackPerformance", "personalizeOffer"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "promotion", "campaign", "discount", "target", "offer"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["launchCampaign", "applyPromotion", "measureROI", "optimizeBudget"] },
+    "CSE_58": { title: "Wishlist Management", requiredTools: ["addToWishlist", "shareList", "setPriceAlert", "notifyStock", "moveToCart"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "wishlist", "item", "alert", "share", "notify"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["saveItem", "removeItem", "createAlert", "sendNotification"] },
+    "CSE_59": { title: "Returns Processor", requiredTools: ["initiateReturn", "approveReturn", "processRefund", "inspectQuality", "restockItem"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "return", "refund", "quality", "restock", "approve"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["createReturn", "validateReturn", "issueRefund", "updateInventory"] },
+    "CSE_60": { title: "Loyalty Program Manager", requiredTools: ["earnPoints", "redeemReward", "manageTier", "integratePartner", "trackEngagement"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "loyalty", "points", "reward", "tier", "member"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["addPoints", "claimReward", "upgradeTier", "getBalance"] },
+    "CSE_61": { title: "Loan Origination System", requiredTools: ["submitApplication", "scoreCredit", "verifyDocuments", "approveWorkflow", "disburseFunds"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "loan", "credit", "application", "approve", "disburse"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["processApplication", "calculateScore", "reviewDocs", "fundLoan"] },
+    "CSE_62": { title: "Investment Portfolio Tracker", requiredTools: ["trackHoldings", "calculatePerformance", "suggestRebalance", "optimizeTax", "compareBenchmark"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "portfolio", "investment", "return", "holding", "performance"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["getHoldings", "calculateReturns", "rebalancePortfolio", "generateReport"] },
+    "CSE_63": { title: "Tax Calculation Engine", requiredTools: ["computeIncome", "optimizeDeductions", "calculateAdvance", "assistFiling", "compareRegimes"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "tax", "income", "deduction", "filing", "regime"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["calculateTax", "findDeductions", "estimateAdvance", "prepareReturn"] },
+    "CSE_64": { title: "Bill Payment Aggregator", requiredTools: ["fetchBills", "processPayment", "setupAutoPay", "sendReminder", "getHistory"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "bill", "payment", "biller", "autopay", "due"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["getBills", "payBill", "schedulePayment", "trackPayments"] },
+    "CSE_65": { title: "Mutual Fund SIP Manager", requiredTools: ["selectFund", "setupSIP", "modifySIP", "trackPerformance", "planGoal"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "sip", "fund", "mutual", "nav", "investment"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["startSIP", "cancelSIP", "comparesFunds", "calculateReturns"] },
+    "CSE_66": { title: "Credit Score Monitor", requiredTools: ["fetchScore", "analyzeFactors", "suggestImprovement", "createAlert", "disputeError"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "credit", "score", "factor", "bureau", "dispute"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["getScore", "analyzeFactors", "trackChanges", "fileDispute"] },
+    "CSE_67": { title: "Expense Splitter App", requiredTools: ["createGroup", "logExpense", "calculateSplit", "settleBalance", "generateSummary"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "expense", "split", "group", "balance", "settle"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["addExpense", "splitAmount", "getBalances", "recordSettlement"] },
+    "CSE_68": { title: "Stock Trading Assistant", requiredTools: ["analyzeMarket", "manageAlerts", "placeOrder", "trackPortfolio", "getResearch"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "stock", "trade", "market", "order", "portfolio"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["getQuote", "createAlert", "executeTrade", "analyzeStock"] },
+    "CSE_69": { title: "Insurance Comparison Engine", requiredTools: ["aggregateQuotes", "compareFeatures", "recommendPlan", "analyzeHistory", "renewPolicy"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "insurance", "quote", "premium", "coverage", "compare"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["getQuotes", "comparePlans", "selectPolicy", "calculatePremium"] },
+    "CSE_70": { title: "EMI Calculator and Tracker", requiredTools: ["compareLoan", "trackPayment", "analyzePrepay", "suggestRefinance", "calculateImpact"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "emi", "loan", "interest", "prepay", "refinance"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["calculateEMI", "trackEMI", "simulatePrepay", "compareRefinance"] },
+    "CSE_71": { title: "Restaurant Table Reservation", requiredTools: ["checkAvailability", "bookTable", "manageWaitlist", "recordPreferences", "sendConfirmation"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "reservation", "table", "booking", "restaurant", "guest"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["findTable", "makeReservation", "cancelBooking", "updatePreferences"] },
+    "CSE_72": { title: "Gym Membership Manager", requiredTools: ["manageMember", "bookClass", "assignTrainer", "trackAttendance", "analyzeProgress"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "member", "gym", "class", "trainer", "fitness"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["registerMember", "reserveClass", "markAttendance", "generateReport"] },
+    "CSE_73": { title: "Library Management System", requiredTools: ["searchCatalog", "borrowBook", "returnBook", "manageFines", "recommendBooks"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "library", "book", "borrow", "return", "catalog"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["findBook", "checkoutBook", "checkinBook", "calculateFine"] },
+    "CSE_74": { title: "Parking Management System", requiredTools: ["checkSpots", "reserveSpot", "processPayment", "manageViolations", "generateAnalytics"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "parking", "spot", "vehicle", "reservation", "payment"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["findSpot", "bookParking", "releaseSpot", "chargeUser"] },
+    "CSE_75": { title: "Movie Ticket Booking", requiredTools: ["listShows", "selectSeats", "processBooking", "applyOffers", "handleCancellation"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "movie", "ticket", "seat", "booking", "show"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["getMovies", "bookSeats", "confirmBooking", "cancelTicket"] },
+    "CSE_76": { title: "Laundry Service Platform", requiredTools: ["createOrder", "schedulePickup", "trackProgress", "manageDelivery", "handleComplaints"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "laundry", "order", "pickup", "delivery", "service"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["placeOrder", "scheduleCollection", "updateStatus", "completeDelivery"] },
+    "CSE_77": { title: "Pet Care Service Manager", requiredTools: ["bookService", "managePetProfile", "trackVetRecords", "sendReminders", "findEmergency"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "pet", "service", "vet", "grooming", "booking"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["registerPet", "bookAppointment", "updateRecords", "alertOwner"] },
+    "CSE_78": { title: "Home Services Marketplace", requiredTools: ["listServices", "bookService", "manageProvider", "collectReviews", "handleDispute"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "service", "provider", "booking", "home", "review"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["findService", "requestBooking", "assignProvider", "rateService"] },
+    "CSE_79": { title: "Tutor Matching Platform", requiredTools: ["matchTutor", "scheduleSession", "trackProgress", "processPayment", "collectFeedback"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "tutor", "student", "session", "subject", "learning"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["findTutor", "bookSession", "recordProgress", "submitFeedback"] },
+    "CSE_80": { title: "Volunteer Management System", requiredTools: ["registerVolunteer", "matchOpportunity", "scheduleShift", "trackHours", "recognizeContribution"], requiredKeywords: ["MCPServer", "server.tool", "async", "await", "volunteer", "opportunity", "hours", "event", "nonprofit"], requiredPatterns: ["try", "catch", "if", "return", "async", "await"], minCodeLength: 800, expectedFunctions: ["signupVolunteer", "assignTask", "logHours", "generateCertificate"] },
+    
+    // ECE Questions (25) - IoT/Embedded Systems
+    "ECE_01": { title: "Smart Irrigation Controller", requiredComponents: ["soil moisture sensor", "esp32", "relay", "pump", "solar"], requiredKeywords: ["moisture", "threshold", "irrigation", "pump", "sensor", "wifi", "mqtt", "water"], requiredSections: ["component", "working", "circuit", "algorithm", "power", "cost"], minDescLength: 400 },
+    "ECE_02": { title: "Crop Disease Detection Camera", requiredComponents: ["esp32-cam", "camera", "edge ai", "tinyml", "battery"], requiredKeywords: ["disease", "detection", "camera", "image", "classification", "ai", "model", "leaf"], requiredSections: ["component", "working", "algorithm", "training", "deployment", "power"], minDescLength: 400 },
+    "ECE_03": { title: "Livestock Health Monitoring Collar", requiredComponents: ["temperature sensor", "accelerometer", "gps", "lora", "battery"], requiredKeywords: ["health", "temperature", "activity", "collar", "animal", "monitoring", "alert"], requiredSections: ["component", "working", "communication", "power", "algorithm", "cost"], minDescLength: 400 },
+    "ECE_04": { title: "Greenhouse Climate Controller", requiredComponents: ["dht22", "relay", "fan", "heater", "arduino"], requiredKeywords: ["temperature", "humidity", "greenhouse", "ventilation", "control", "climate"], requiredSections: ["component", "working", "control", "algorithm", "deployment", "cost"], minDescLength: 400 },
+    "ECE_05": { title: "Fish Pond Water Quality Monitor", requiredComponents: ["ph sensor", "do sensor", "temperature", "esp32", "aerator"], requiredKeywords: ["water", "quality", "ph", "oxygen", "pond", "fish", "monitoring", "alert"], requiredSections: ["component", "working", "sensor", "algorithm", "alert", "cost"], minDescLength: 400 },
+    "ECE_06": { title: "Voice-Controlled Home Automation", requiredComponents: ["microphone", "esp32", "relay", "speaker", "led"], requiredKeywords: ["voice", "command", "home", "automation", "control", "light", "fan", "recognition"], requiredSections: ["component", "working", "voice", "algorithm", "interface", "cost"], minDescLength: 400 },
+    "ECE_07": { title: "Smart Door Lock with Face Recognition", requiredComponents: ["camera", "servo", "esp32", "lcd", "keypad"], requiredKeywords: ["face", "recognition", "door", "lock", "security", "access", "servo"], requiredSections: ["component", "working", "algorithm", "security", "interface", "cost"], minDescLength: 400 },
+    "ECE_08": { title: "Elderly Fall Detection Wearable", requiredComponents: ["accelerometer", "gps", "gsm", "battery", "vibration"], requiredKeywords: ["fall", "detection", "elderly", "alert", "accelerometer", "emergency", "wearable"], requiredSections: ["component", "working", "algorithm", "alert", "battery", "cost"], minDescLength: 400 },
+    "ECE_09": { title: "Smart Parking Guidance System", requiredComponents: ["ultrasonic", "led", "esp32", "display", "ir sensor"], requiredKeywords: ["parking", "slot", "available", "guidance", "sensor", "display", "indicator"], requiredSections: ["component", "working", "detection", "display", "communication", "cost"], minDescLength: 400 },
+    "ECE_10": { title: "Air Quality Monitor with Health Alerts", requiredComponents: ["mq135", "pm sensor", "dht22", "oled", "buzzer"], requiredKeywords: ["air", "quality", "pm2.5", "aqi", "health", "alert", "pollution"], requiredSections: ["component", "working", "sensor", "calculation", "alert", "cost"], minDescLength: 400 },
+    "ECE_11": { title: "CNC Machine Vibration Monitor", requiredComponents: ["accelerometer", "esp32", "fft", "wifi", "display"], requiredKeywords: ["vibration", "cnc", "machine", "fft", "frequency", "bearing", "maintenance"], requiredSections: ["component", "working", "analysis", "threshold", "alert", "cost"], minDescLength: 400 },
+    "ECE_12": { title: "Cold Chain Temperature Logger", requiredComponents: ["ds18b20", "gps", "sd card", "gsm", "battery"], requiredKeywords: ["temperature", "cold chain", "vaccine", "logger", "gps", "alert", "storage"], requiredSections: ["component", "working", "logging", "alert", "communication", "cost"], minDescLength: 400 },
+    "ECE_13": { title: "Conveyor Belt Speed Monitor", requiredComponents: ["encoder", "current sensor", "esp32", "display", "relay"], requiredKeywords: ["conveyor", "speed", "belt", "slip", "motor", "current", "monitoring"], requiredSections: ["component", "working", "measurement", "detection", "alert", "cost"], minDescLength: 400 },
+    "ECE_14": { title: "Compressed Air Leak Detector", requiredComponents: ["ultrasonic mic", "amplifier", "arduino", "display", "buzzer"], requiredKeywords: ["leak", "ultrasonic", "compressed", "air", "detection", "frequency", "cfm"], requiredSections: ["component", "working", "detection", "calculation", "cost savings", "deployment"], minDescLength: 400 },
+    "ECE_15": { title: "Industrial Safety Helmet", requiredComponents: ["uwb", "accelerometer", "vibration motor", "battery", "ble"], requiredKeywords: ["safety", "helmet", "proximity", "detection", "fall", "alert", "industrial"], requiredSections: ["component", "working", "detection", "alert", "communication", "cost"], minDescLength: 400 },
+    "ECE_16": { title: "Smart Baby Monitor", requiredComponents: ["microphone", "dht22", "camera", "speaker", "wifi"], requiredKeywords: ["baby", "monitor", "cry", "temperature", "breathing", "alert", "classification"], requiredSections: ["component", "working", "detection", "classification", "alert", "cost"], minDescLength: 400 },
+    "ECE_17": { title: "GPS Pet Tracker Collar", requiredComponents: ["gps", "gsm", "battery", "accelerometer", "buzzer"], requiredKeywords: ["pet", "tracker", "gps", "geofence", "activity", "battery", "collar"], requiredSections: ["component", "working", "tracking", "geofence", "battery", "cost"], minDescLength: 400 },
+    "ECE_18": { title: "Smart Water Bottle", requiredComponents: ["flow sensor", "uv led", "temperature", "ble", "battery"], requiredKeywords: ["water", "bottle", "hydration", "tracking", "uv", "sterilization", "reminder"], requiredSections: ["component", "working", "measurement", "sterilization", "app", "cost"], minDescLength: 400 },
+    "ECE_19": { title: "Smart Motorcycle Helmet", requiredComponents: ["bone conduction", "accelerometer", "gps", "battery", "ble"], requiredKeywords: ["helmet", "motorcycle", "navigation", "brake", "light", "crash", "detection"], requiredSections: ["component", "working", "audio", "detection", "alert", "cost"], minDescLength: 400 },
+    "ECE_20": { title: "Smart Plant Care System", requiredComponents: ["soil moisture", "light sensor", "pump", "esp32", "reservoir"], requiredKeywords: ["plant", "watering", "moisture", "light", "automatic", "care", "indoor"], requiredSections: ["component", "working", "sensing", "watering", "algorithm", "cost"], minDescLength: 400 },
+    "ECE_21": { title: "Drone Crop Spraying Controller", requiredComponents: ["gps", "flow sensor", "pump", "flight controller", "tank"], requiredKeywords: ["drone", "spraying", "crop", "gps", "flow", "rate", "coverage"], requiredSections: ["component", "working", "gps", "spraying", "control", "cost"], minDescLength: 400 },
+    "ECE_22": { title: "Assistive Device for Visually Impaired", requiredComponents: ["ultrasonic", "camera", "vibration", "bone conduction", "battery"], requiredKeywords: ["assistive", "blind", "obstacle", "detection", "navigation", "audio", "haptic"], requiredSections: ["component", "working", "detection", "feedback", "interface", "cost"], minDescLength: 400 },
+    "ECE_23": { title: "Solar Panel Performance Optimizer", requiredComponents: ["current sensor", "voltage sensor", "esp32", "relay", "display"], requiredKeywords: ["solar", "panel", "power", "efficiency", "mppt", "monitoring", "string"], requiredSections: ["component", "working", "measurement", "optimization", "fault", "cost"], minDescLength: 400 },
+    "ECE_24": { title: "Smart EV Charger", requiredComponents: ["relay", "current sensor", "energy meter", "esp32", "display"], requiredKeywords: ["ev", "charger", "electric", "vehicle", "energy", "scheduling", "safety"], requiredSections: ["component", "working", "safety", "metering", "scheduling", "cost"], minDescLength: 400 },
+    "ECE_25": { title: "Industrial Noise Monitoring System", requiredComponents: ["microphone", "amplifier", "arduino", "display", "sd card"], requiredKeywords: ["noise", "decibel", "db", "industrial", "safety", "twa", "dosimeter"], requiredSections: ["component", "working", "measurement", "twa", "alert", "cost"], minDescLength: 400 },
+    
+    // EEE Questions (10) - Power Systems
+    "EEE_01": { title: "Three-Phase Power Quality Analyzer", requiredComponents: ["ct", "pt", "adc", "esp32", "display"], requiredKeywords: ["power", "quality", "three-phase", "voltage", "current", "pf", "harmonic", "thd"], requiredSections: ["component", "working", "measurement", "calculation", "display", "cost"], minDescLength: 400 },
+    "EEE_02": { title: "Solar Inverter Performance Monitor", requiredComponents: ["voltage sensor", "current sensor", "esp32", "wifi", "display"], requiredKeywords: ["solar", "inverter", "efficiency", "power", "dc", "ac", "monitoring", "generation"], requiredSections: ["component", "working", "measurement", "efficiency", "fault", "cost"], minDescLength: 400 },
+    "EEE_03": { title: "Industrial Motor Health Monitor", requiredComponents: ["ct", "vibration sensor", "temperature", "esp32", "display"], requiredKeywords: ["motor", "health", "current", "vibration", "temperature", "maintenance", "prediction"], requiredSections: ["component", "working", "analysis", "prediction", "alert", "cost"], minDescLength: 400 },
+    "EEE_04": { title: "Automatic Power Factor Correction", requiredComponents: ["ct", "relay", "capacitor", "arduino", "display"], requiredKeywords: ["power factor", "capacitor", "correction", "apfc", "reactive", "kvar", "penalty"], requiredSections: ["component", "working", "measurement", "switching", "control", "cost"], minDescLength: 400 },
+    "EEE_05": { title: "Smart Energy Meter with Theft Detection", requiredComponents: ["ct", "voltage sensor", "esp32", "gsm", "lcd"], requiredKeywords: ["energy", "meter", "theft", "tamper", "billing", "smart", "gsm", "detection"], requiredSections: ["component", "working", "metering", "tamper", "communication", "cost"], minDescLength: 400 },
+    "EEE_06": { title: "Battery Management System", requiredComponents: ["voltage sensor", "current sensor", "temperature", "mosfet", "mcu"], requiredKeywords: ["battery", "bms", "cell", "balancing", "soc", "soh", "lithium", "protection"], requiredSections: ["component", "working", "balancing", "protection", "soc", "cost"], minDescLength: 400 },
+    "EEE_07": { title: "Maximum Demand Controller", requiredComponents: ["ct", "relay", "esp32", "display", "contactor"], requiredKeywords: ["demand", "maximum", "load", "shedding", "kva", "prediction", "penalty", "contract"], requiredSections: ["component", "working", "prediction", "shedding", "control", "cost"], minDescLength: 400 },
+    "EEE_08": { title: "VFD Performance Optimizer", requiredComponents: ["ct", "voltage sensor", "esp32", "display", "modbus"], requiredKeywords: ["vfd", "drive", "motor", "efficiency", "speed", "energy", "optimization"], requiredSections: ["component", "working", "monitoring", "efficiency", "fault", "cost"], minDescLength: 400 },
+    "EEE_09": { title: "Underground Cable Fault Locator", requiredComponents: ["pulse generator", "oscilloscope", "arduino", "display", "amplifier"], requiredKeywords: ["cable", "fault", "underground", "location", "tdr", "distance", "detection"], requiredSections: ["component", "working", "tdr", "measurement", "location", "cost"], minDescLength: 400 },
+    "EEE_10": { title: "Smart Transformer Monitoring", requiredComponents: ["temperature sensor", "ct", "oil level", "gsm", "esp32"], requiredKeywords: ["transformer", "monitoring", "oil", "temperature", "loading", "life", "health"], requiredSections: ["component", "working", "monitoring", "prediction", "communication", "cost"], minDescLength: 400 },
+    
+    // MECH Questions (10) - Manufacturing/Automation
+    "MECH_01": { title: "AI Visual Inspection for Casting Defects", requiredComponents: ["camera", "lighting", "conveyor", "reject mechanism", "plc"], requiredKeywords: ["visual", "inspection", "defect", "casting", "camera", "ai", "detection", "quality"], requiredSections: ["component", "working", "ai model", "lighting", "reject", "cost"], minDescLength: 400 },
+    "MECH_02": { title: "CNC Spindle Bearing Predictive Maintenance", requiredComponents: ["accelerometer", "temperature", "esp32", "fft", "display"], requiredKeywords: ["spindle", "bearing", "vibration", "predictive", "maintenance", "fft", "failure"], requiredSections: ["component", "working", "analysis", "prediction", "alert", "cost"], minDescLength: 400 },
+    "MECH_03": { title: "Collaborative Robot Pick-and-Place Cell", requiredComponents: ["cobot", "gripper", "camera", "safety sensor", "plc"], requiredKeywords: ["cobot", "robot", "pick", "place", "collaborative", "gripper", "vision", "safety"], requiredSections: ["component", "working", "programming", "safety", "cycle time", "cost"], minDescLength: 400 },
+    "MECH_04": { title: "Compressed Air Leak Detection System", requiredComponents: ["ultrasonic mic", "amplifier", "display", "wifi", "mapping"], requiredKeywords: ["leak", "compressed", "air", "ultrasonic", "detection", "cfm", "cost", "energy"], requiredSections: ["component", "working", "detection", "quantification", "roi", "cost"], minDescLength: 400 },
+    "MECH_05": { title: "Injection Molding Quality Prediction", requiredComponents: ["pressure sensor", "temperature sensor", "timer", "plc", "display"], requiredKeywords: ["injection", "molding", "quality", "pressure", "temperature", "prediction", "defect"], requiredSections: ["component", "working", "monitoring", "prediction", "algorithm", "cost"], minDescLength: 400 },
+    "MECH_06": { title: "Automated Dimension Inspection Station", requiredComponents: ["laser sensor", "camera", "conveyor", "plc", "servo"], requiredKeywords: ["dimension", "inspection", "measurement", "tolerance", "laser", "automated", "spc"], requiredSections: ["component", "working", "measurement", "accuracy", "spc", "cost"], minDescLength: 400 },
+    "MECH_07": { title: "Conveyor Belt Health Monitoring", requiredComponents: ["encoder", "camera", "vibration sensor", "esp32", "display"], requiredKeywords: ["conveyor", "belt", "health", "tear", "splice", "tracking", "monitoring"], requiredSections: ["component", "working", "detection", "monitoring", "alert", "cost"], minDescLength: 400 },
+    "MECH_08": { title: "Weld Quality Monitoring System", requiredComponents: ["current sensor", "voltage sensor", "camera", "data logger", "display"], requiredKeywords: ["weld", "quality", "current", "voltage", "monitoring", "defect", "parameter"], requiredSections: ["component", "working", "monitoring", "detection", "traceability", "cost"], minDescLength: 400 },
+    "MECH_09": { title: "HVAC Energy Optimization System", requiredComponents: ["temperature sensor", "occupancy sensor", "vfd", "bms", "display"], requiredKeywords: ["hvac", "energy", "optimization", "temperature", "occupancy", "vfd", "comfort"], requiredSections: ["component", "working", "control", "optimization", "savings", "cost"], minDescLength: 400 },
+    "MECH_10": { title: "Tool Wear Monitoring in Turning", requiredComponents: ["force sensor", "accelerometer", "acoustic sensor", "esp32", "display"], requiredKeywords: ["tool", "wear", "turning", "cutting", "force", "vibration", "prediction", "life"], requiredSections: ["component", "working", "monitoring", "prediction", "tool change", "cost"], minDescLength: 400 }
+};
+
+// =====================================================
+// QUESTIONS - Built from Answer Keys
 // =====================================================
 const QUESTIONS = {
     'CSE/IT': [],
@@ -634,43 +772,59 @@ const QUESTIONS = {
     'MECH': []
 };
 
+// Build CSE questions from answer keys
 for (let i = 1; i <= 80; i++) {
+    const id = `CSE_${String(i).padStart(2, '0')}`;
+    const ak = ANSWER_KEYS[id];
     QUESTIONS['CSE/IT'].push({
-        id: `CSE_${String(i).padStart(2, '0')}`,
-        title: `MCP Server Project ${i}`,
+        id: id,
+        title: ak.title,
         type: 'code',
-        scenario: `Build an MCP (Model Context Protocol) server with tools, async handlers, and error handling.`,
-        keywords: ['mcpserver', 'server.tool', 'async', 'await', 'try', 'catch']
+        scenario: `Build an MCP Server for "${ak.title}". Required tools: ${ak.requiredTools.slice(0, 3).join(', ')}...`,
+        keywords: ak.requiredKeywords,
+        answerKey: ak
     });
 }
 
+// Build ECE questions from answer keys
 for (let i = 1; i <= 25; i++) {
+    const id = `ECE_${String(i).padStart(2, '0')}`;
+    const ak = ANSWER_KEYS[id];
     QUESTIONS['ECE'].push({
-        id: `ECE_${String(i).padStart(2, '0')}`,
-        title: `IoT System ${i}`,
+        id: id,
+        title: ak.title,
         type: 'simulation',
-        scenario: `Design IoT monitoring system with sensors and ESP32/Arduino.`,
-        keywords: ['sensor', 'esp32', 'arduino', 'wifi', 'mqtt']
+        scenario: `Design "${ak.title}" using IoT sensors and microcontrollers. Required: ${ak.requiredComponents.slice(0, 3).join(', ')}...`,
+        keywords: ak.requiredKeywords,
+        answerKey: ak
     });
 }
 
+// Build EEE questions from answer keys
 for (let i = 1; i <= 10; i++) {
+    const id = `EEE_${String(i).padStart(2, '0')}`;
+    const ak = ANSWER_KEYS[id];
     QUESTIONS['EEE'].push({
-        id: `EEE_${String(i).padStart(2, '0')}`,
-        title: `Power System ${i}`,
+        id: id,
+        title: ak.title,
         type: 'simulation',
-        scenario: `Design power monitoring/control system with sensors.`,
-        keywords: ['power', 'voltage', 'current', 'sensor', 'monitor']
+        scenario: `Design "${ak.title}" for power system monitoring. Required: ${ak.requiredComponents.slice(0, 3).join(', ')}...`,
+        keywords: ak.requiredKeywords,
+        answerKey: ak
     });
 }
 
+// Build MECH questions from answer keys
 for (let i = 1; i <= 10; i++) {
+    const id = `MECH_${String(i).padStart(2, '0')}`;
+    const ak = ANSWER_KEYS[id];
     QUESTIONS['MECH'].push({
-        id: `MECH_${String(i).padStart(2, '0')}`,
-        title: `Smart Manufacturing ${i}`,
+        id: id,
+        title: ak.title,
         type: 'simulation',
-        scenario: `Design AI-powered quality control or predictive maintenance system.`,
-        keywords: ['sensor', 'defect', 'quality', 'ai', 'prediction']
+        scenario: `Design "${ak.title}" for smart manufacturing. Required: ${ak.requiredComponents.slice(0, 3).join(', ')}...`,
+        keywords: ak.requiredKeywords,
+        answerKey: ak
     });
 }
 
@@ -683,7 +837,53 @@ let timerInterval = null;
 let startTime = null;
 let answers = {};
 let screenshot = null;
+let screenshotData = { width: 0, height: 0, size: 0 }; // Track screenshot metadata
 let dashboardData = [];
+
+// =====================================================
+// SCREENSHOT VALIDATION
+// =====================================================
+function validateScreenshot() {
+    if (!screenshot || !screenshotData.width) {
+        return { score: 0, reason: 'No screenshot uploaded' };
+    }
+    
+    const { width, height, size } = screenshotData;
+    
+    // Check 1: Minimum dimensions (at least 400x300)
+    if (width < 400 || height < 300) {
+        return { score: 3, reason: `Too small (${width}x${height}). Need min 400x300` };
+    }
+    
+    // Check 2: Minimum file size (at least 30KB - not a blank/icon image)
+    if (size < 30000) {
+        return { score: 5, reason: `File too small (${Math.round(size/1024)}KB). Upload actual screenshot.` };
+    }
+    
+    // Check 3: Aspect ratio (should be reasonable screen ratio)
+    const ratio = width / height;
+    if (ratio < 0.5 || ratio > 3) {
+        return { score: 5, reason: 'Invalid aspect ratio. Upload proper screenshot.' };
+    }
+    
+    // Check 4: Excellent - Large HD screenshot
+    if (width >= 1000 && height >= 700 && size >= 150000) {
+        return { score: 15, reason: 'Excellent screenshot ✓' };
+    }
+    
+    // Check 5: Good - Medium quality
+    if (width >= 800 && height >= 600 && size >= 80000) {
+        return { score: 13, reason: 'Good screenshot ✓' };
+    }
+    
+    // Check 6: Acceptable
+    if (width >= 600 && height >= 400 && size >= 50000) {
+        return { score: 10, reason: 'Acceptable screenshot' };
+    }
+    
+    // Basic valid but low quality
+    return { score: 7, reason: 'Low quality screenshot' };
+}
 
 // =====================================================
 // EVALUATION
@@ -744,9 +944,9 @@ function evaluate() {
         score += doc;
     }
     
-    const ss = screenshot ? 15 : 0;
-    breakdown.push({ name: 'Screenshot', score: ss, max: 15 });
-    score += ss;
+    const ssResult = validateScreenshot();
+    breakdown.push({ name: 'Screenshot', score: ssResult.score, max: 15, reason: ssResult.reason });
+    score += ssResult.score;
     
     return { total: Math.min(100, score), breakdown };
 }
@@ -976,6 +1176,9 @@ server.tool('myTool', async (params) => {
             
             <div class="screenshot-section">
                 <h3>📸 Screenshot (15 marks)</h3>
+                <p style="color:#666;font-size:0.85rem;margin-bottom:0.5rem">
+                    📋 Requirements: Min 400x300 pixels, Min 30KB file size
+                </p>
                 <div class="upload-area ${screenshot ? 'has-file' : ''}" onclick="document.getElementById('ssFile').click()">
                     <div class="upload-icon">${screenshot ? '✅' : '📷'}</div>
                     <div>${screenshot ? 'Uploaded!' : 'Click to upload'}</div>
@@ -983,6 +1186,14 @@ server.tool('myTool', async (params) => {
                 <input type="file" id="ssFile" accept="image/*" style="display:none" onchange="handleFile(event)">
                 <div class="preview-box ${screenshot ? 'active' : ''}" id="previewBox">
                     <img class="preview-img" id="previewImg" src="${screenshot || ''}">
+                    ${screenshot ? `
+                        <div style="margin-top:0.5rem;padding:0.5rem;background:#f5f7fa;border-radius:6px;font-size:0.85rem">
+                            <strong>Size:</strong> ${screenshotData.width}x${screenshotData.height} | 
+                            <strong>File:</strong> ${Math.round(screenshotData.size/1024)}KB |
+                            <strong>Score:</strong> <span style="color:${validateScreenshot().score >= 12 ? '#28a745' : validateScreenshot().score >= 8 ? '#ffc107' : '#dc3545'}">${validateScreenshot().score}/15</span>
+                            <div style="color:#666;margin-top:0.25rem">${validateScreenshot().reason}</div>
+                        </div>
+                    ` : ''}
                     <button class="btn btn-secondary" style="margin-top:0.5rem" onclick="removeFile();event.stopPropagation()">Remove</button>
                 </div>
             </div>
@@ -1009,6 +1220,9 @@ server.tool('myTool', async (params) => {
             
             <div class="screenshot-section">
                 <h3>📸 Screenshot (15 marks)</h3>
+                <p style="color:#666;font-size:0.85rem;margin-bottom:0.5rem">
+                    📋 Requirements: Min 400x300 pixels, Min 30KB file size
+                </p>
                 <div class="upload-area ${screenshot ? 'has-file' : ''}" onclick="document.getElementById('ssFile').click()">
                     <div class="upload-icon">${screenshot ? '✅' : '📷'}</div>
                     <div>${screenshot ? 'Uploaded!' : 'Click to upload'}</div>
@@ -1016,6 +1230,15 @@ server.tool('myTool', async (params) => {
                 <input type="file" id="ssFile" accept="image/*" style="display:none" onchange="handleFile(event)">
                 <div class="preview-box ${screenshot ? 'active' : ''}" id="previewBox">
                     <img class="preview-img" id="previewImg" src="${screenshot || ''}">
+                    ${screenshot ? `
+                        <div style="margin-top:0.5rem;padding:0.5rem;background:#f5f7fa;border-radius:6px;font-size:0.85rem">
+                            <strong>Size:</strong> ${screenshotData.width}x${screenshotData.height} | 
+                            <strong>File:</strong> ${Math.round(screenshotData.size/1024)}KB |
+                            <strong>Score:</strong> <span style="color:${validateScreenshot().score >= 12 ? '#28a745' : validateScreenshot().score >= 8 ? '#ffc107' : '#dc3545'}">${validateScreenshot().score}/15</span>
+                            <div style="color:#666;margin-top:0.25rem">${validateScreenshot().reason}</div>
+                        </div>
+                    ` : ''}
+                    <button class="btn btn-secondary" style="margin-top:0.5rem" onclick="removeFile();event.stopPropagation()">Remove</button>
                 </div>
             </div>
         `;
@@ -1029,16 +1252,33 @@ function handleFile(e) {
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) { alert('Max 5MB'); return; }
     
+    // Store file size
+    screenshotData.size = file.size;
+    
     const reader = new FileReader();
     reader.onload = (ev) => {
         screenshot = ev.target.result;
-        renderTasks();
+        
+        // Get image dimensions
+        const img = new Image();
+        img.onload = () => {
+            screenshotData.width = img.width;
+            screenshotData.height = img.height;
+            
+            // Show validation feedback
+            const validation = validateScreenshot();
+            console.log('Screenshot validation:', validation);
+            
+            renderTasks();
+        };
+        img.src = screenshot;
     };
     reader.readAsDataURL(file);
 }
 
 function removeFile() {
     screenshot = null;
+    screenshotData = { width: 0, height: 0, size: 0 };
     renderTasks();
 }
 
@@ -1190,7 +1430,7 @@ function showResult(result) {
     
     let html = '<h4>Score Breakdown</h4>';
     result.breakdown.forEach(b => {
-        html += `<div class="bd-row"><span>${b.name}</span><span>${b.score}/${b.max}</span></div>`;
+        html += `<div class="bd-row"><span>${b.name}${b.reason ? ` <small style="color:#666">(${b.reason})</small>` : ''}</span><span>${b.score}/${b.max}</span></div>`;
     });
     html += `<div class="bd-row total"><span>TOTAL</span><span>${result.total}/100</span></div>`;
     document.getElementById('resBreakdown').innerHTML = html;
