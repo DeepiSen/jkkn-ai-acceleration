@@ -535,6 +535,7 @@
                 <option value="">All Status</option>
                 <option value="submitted">Submitted</option>
                 <option value="saved">In Progress</option>
+                <option value="pending_review">⏳ Pending Review</option>
             </select>
             <button class="btn btn-secondary" onclick="loadDashboard()">🔄 Refresh</button>
             <button class="btn btn-secondary" onclick="exportExcel()">📥 Export Excel</button>
@@ -892,63 +893,151 @@ function evaluate() {
     const q = currentQuestion;
     const breakdown = [];
     let score = 0;
+    const ak = q.answerKey || ANSWER_KEYS[q.id] || {};
     
     if (q.type === 'code') {
+        // CSE/IT - Full Auto Evaluation (85 points code + 15 screenshot)
         const code = (answers.code || '').toLowerCase();
         
-        let mcp = 0;
-        if (code.includes('mcpserver')) mcp += 15;
-        if (code.includes('server.tool') || code.includes('server.resource')) mcp += 10;
-        if (code.includes('async')) mcp += 5;
-        if (code.includes('await')) mcp += 5;
-        breakdown.push({ name: 'MCP Implementation', score: mcp, max: 35 });
-        score += mcp;
+        // 1. MCP Structure Check (25 points)
+        let mcpScore = 0;
+        if (code.includes('mcpserver')) mcpScore += 10;
+        if (code.includes('server.tool') || code.includes('server.resource')) mcpScore += 8;
+        if (code.includes('async')) mcpScore += 4;
+        if (code.includes('await')) mcpScore += 3;
+        mcpScore = Math.min(25, mcpScore);
+        breakdown.push({ name: 'MCP Structure', score: mcpScore, max: 25 });
+        score += mcpScore;
         
-        let kw = 0;
-        q.keywords.forEach(k => { if (code.includes(k)) kw += 5; });
-        kw = Math.min(25, kw);
-        breakdown.push({ name: 'Keywords', score: kw, max: 25 });
-        score += kw;
+        // 2. Required Tools Check (20 points) - FROM ANSWER KEY
+        let toolScore = 0;
+        if (ak.requiredTools) {
+            ak.requiredTools.forEach(tool => {
+                if (code.includes(tool.toLowerCase())) toolScore += 4;
+            });
+            toolScore = Math.min(20, toolScore);
+        }
+        breakdown.push({ name: 'Required Tools', score: toolScore, max: 20 });
+        score += toolScore;
         
-        let pat = 0;
-        ['try', 'catch', 'if', 'return', 'function'].forEach(p => { if (code.includes(p)) pat += 3; });
-        pat = Math.min(15, pat);
-        breakdown.push({ name: 'Patterns', score: pat, max: 15 });
-        score += pat;
+        // 3. Domain Keywords Check (15 points) - FROM ANSWER KEY
+        let kwScore = 0;
+        if (ak.requiredKeywords) {
+            ak.requiredKeywords.forEach(kw => {
+                if (code.includes(kw.toLowerCase())) kwScore += 2;
+            });
+            kwScore = Math.min(15, kwScore);
+        }
+        breakdown.push({ name: 'Domain Keywords', score: kwScore, max: 15 });
+        score += kwScore;
         
-        let len = (answers.code || '').length >= 200 ? 10 : (answers.code || '').length >= 100 ? 7 : 3;
-        breakdown.push({ name: 'Completeness', score: len, max: 10 });
-        score += len;
+        // 4. Code Patterns Check (15 points)
+        let patScore = 0;
+        const patterns = ak.requiredPatterns || ['try', 'catch', 'if', 'return', 'async', 'await'];
+        patterns.forEach(p => { if (code.includes(p.toLowerCase())) patScore += 3; });
+        patScore = Math.min(15, patScore);
+        breakdown.push({ name: 'Code Patterns', score: patScore, max: 15 });
+        score += patScore;
+        
+        // 5. Expected Functions Check (10 points)
+        let funcScore = 0;
+        if (ak.expectedFunctions) {
+            ak.expectedFunctions.forEach(fn => {
+                if (code.includes(fn.toLowerCase())) funcScore += 3;
+            });
+            funcScore = Math.min(10, funcScore);
+        }
+        breakdown.push({ name: 'Expected Functions', score: funcScore, max: 10 });
+        score += funcScore;
+        
+        // Screenshot (15 points)
+        const ssResult = validateScreenshot();
+        breakdown.push({ name: 'Screenshot', score: ssResult.score, max: 15, reason: ssResult.reason });
+        score += ssResult.score;
+        
     } else {
+        // ECE/EEE/MECH - HYBRID Evaluation
+        // Auto: 60 points | Manual: 40 points (by facilitator)
         const link = answers.link || '';
         const desc = (answers.desc || '').toLowerCase();
         
-        let tk = link.includes('tinkercad.com') ? 25 : (link.length > 10 ? 10 : 0);
-        breakdown.push({ name: 'Tinkercad', score: tk, max: 25 });
-        score += tk;
+        // ========== AUTO EVALUATION (60 points) ==========
         
-        let comp = 0;
-        ['sensor', 'esp32', 'arduino', 'relay', 'led', 'lcd'].forEach(c => { if (desc.includes(c)) comp += 4; });
-        comp = Math.min(20, comp);
-        breakdown.push({ name: 'Components', score: comp, max: 20 });
-        score += comp;
+        // 1. Tinkercad Link Format (10 points)
+        let linkScore = 0;
+        if (link.includes('tinkercad.com/things/')) {
+            linkScore = 10; // Valid Tinkercad project link
+        } else if (link.includes('tinkercad.com')) {
+            linkScore = 5; // Tinkercad but not proper project link
+        } else if (link.length > 10) {
+            linkScore = 2; // Some link provided
+        }
+        breakdown.push({ name: 'Tinkercad Link', score: linkScore, max: 10, type: 'auto' });
+        score += linkScore;
         
-        let kw = 0;
-        q.keywords.forEach(k => { if (desc.includes(k)) kw += 5; });
-        kw = Math.min(25, kw);
-        breakdown.push({ name: 'Keywords', score: kw, max: 25 });
-        score += kw;
+        // 2. Description Quality - Keywords (25 points) - FROM ANSWER KEY
+        let kwScore = 0;
+        if (ak.requiredKeywords) {
+            ak.requiredKeywords.forEach(kw => {
+                if (desc.includes(kw.toLowerCase())) kwScore += 4;
+            });
+            kwScore = Math.min(25, kwScore);
+        }
+        breakdown.push({ name: 'Technical Keywords', score: kwScore, max: 25, type: 'auto' });
+        score += kwScore;
         
-        let doc = desc.length >= 200 ? 15 : desc.length >= 100 ? 10 : 5;
-        breakdown.push({ name: 'Documentation', score: doc, max: 15 });
-        score += doc;
+        // 3. Required Sections Present (15 points) - FROM ANSWER KEY
+        let sectScore = 0;
+        if (ak.requiredSections) {
+            ak.requiredSections.forEach(sect => {
+                if (desc.includes(sect.toLowerCase())) sectScore += 3;
+            });
+            sectScore = Math.min(15, sectScore);
+        }
+        breakdown.push({ name: 'Documentation Sections', score: sectScore, max: 15, type: 'auto' });
+        score += sectScore;
+        
+        // 4. Screenshot Uploaded (10 points)
+        const ssResult = validateScreenshot();
+        breakdown.push({ name: 'Screenshot Quality', score: Math.min(10, ssResult.score), max: 10, type: 'auto', reason: ssResult.reason });
+        score += Math.min(10, ssResult.score);
+        
+        // ========== MANUAL EVALUATION (40 points) - PENDING ==========
+        breakdown.push({ 
+            name: '⏳ Circuit Correctness', 
+            score: 0, 
+            max: 15, 
+            type: 'manual',
+            status: 'pending',
+            note: 'Facilitator will verify'
+        });
+        breakdown.push({ 
+            name: '⏳ Simulation Works', 
+            score: 0, 
+            max: 15, 
+            type: 'manual',
+            status: 'pending',
+            note: 'Facilitator will verify'
+        });
+        breakdown.push({ 
+            name: '⏳ Components Connected', 
+            score: 0, 
+            max: 10, 
+            type: 'manual',
+            status: 'pending',
+            note: 'Facilitator will verify'
+        });
     }
     
-    const ssResult = validateScreenshot();
-    breakdown.push({ name: 'Screenshot', score: ssResult.score, max: 15, reason: ssResult.reason });
-    score += ssResult.score;
-    
-    return { total: Math.min(100, score), breakdown };
+    return { 
+        total: Math.min(100, score), 
+        breakdown,
+        autoScore: score,
+        manualScore: 0,
+        manualPending: q.type !== 'code',
+        maxAutoScore: q.type === 'code' ? 100 : 60,
+        maxManualScore: q.type === 'code' ? 0 : 40
+    };
 }
 
 // =====================================================
@@ -969,8 +1058,12 @@ async function saveToDatabase(data, isSubmit = false) {
             answers: data.answers,
             code_score: data.codeScore || 0,
             screenshot_score: data.screenshotScore || 0,
+            auto_score: data.autoScore || 0,
+            manual_score: data.manualScore || 0,
+            manual_pending: data.manualPending || false,
             total_score: data.totalScore,
-            time_taken: data.time
+            time_taken: data.time,
+            evaluation_breakdown: data.breakdown || null
         };
         
         // Check if exists
@@ -1026,12 +1119,12 @@ async function loadAllSubmissions(dept = null, status = null) {
     }
 }
 
-async function updateGrade(rollNo, manualScore, comments, gradedBy) {
+async function updateGrade(rollNo, updates) {
     try {
         await supabaseRequest(
             `submissions?roll_no=eq.${encodeURIComponent(rollNo)}`,
             'PATCH',
-            { manual_score: manualScore, comments: comments, graded_by: gradedBy }
+            updates
         );
         return true;
     } catch (err) {
@@ -1386,8 +1479,12 @@ async function finalSubmit() {
         }
     }
     
-    // Confirm
-    if (!confirm('🚨 FINAL SUBMISSION\n\nThis CANNOT be undone!\n\nClick OK to submit.')) {
+    // Confirm with appropriate message
+    const confirmMsg = currentQuestion.type === 'code' 
+        ? '🚨 FINAL SUBMISSION\n\nThis CANNOT be undone!\n\nClick OK to submit.'
+        : '🚨 FINAL SUBMISSION\n\nThis CANNOT be undone!\n\nNote: Your facilitator will review your Tinkercad simulation and add manual scores (up to 40 points).\n\nClick OK to submit.';
+    
+    if (!confirm(confirmMsg)) {
         return;
     }
     
@@ -1404,9 +1501,13 @@ async function finalSubmit() {
         questionId: currentQuestion.id,
         type: currentQuestion.type,
         answers: { ...answers },
-        codeScore: result.total - (screenshot ? 15 : 0),
-        screenshotScore: screenshot ? 15 : 0,
+        codeScore: currentQuestion.type === 'code' ? (result.total - (screenshot ? 15 : 0)) : 0,
+        screenshotScore: screenshot ? (currentQuestion.type === 'code' ? 15 : 10) : 0,
+        autoScore: result.autoScore || result.total,
+        manualScore: result.manualScore || 0,
+        manualPending: result.manualPending || false,
         totalScore: result.total,
+        breakdown: JSON.stringify(result.breakdown),
         time: document.getElementById('timer').textContent
     };
     
@@ -1421,18 +1522,72 @@ async function finalSubmit() {
 }
 
 function showResult(result) {
-    const icon = result.total >= 70 ? '🎉' : result.total >= 40 ? '👍' : '📝';
-    const title = result.total >= 70 ? 'Excellent!' : result.total >= 40 ? 'Good Job!' : 'Submitted!';
+    const isHybrid = result.manualPending;
+    const displayScore = isHybrid ? result.autoScore : result.total;
+    const maxScore = isHybrid ? result.maxAutoScore : 100;
+    
+    // Adjust icon/title for hybrid
+    let icon, title;
+    if (isHybrid) {
+        icon = displayScore >= 45 ? '✅' : displayScore >= 25 ? '📋' : '📝';
+        title = displayScore >= 45 ? 'Auto-Check Passed!' : displayScore >= 25 ? 'Submitted for Review' : 'Submitted';
+    } else {
+        icon = result.total >= 70 ? '🎉' : result.total >= 40 ? '👍' : '📝';
+        title = result.total >= 70 ? 'Excellent!' : result.total >= 40 ? 'Good Job!' : 'Submitted!';
+    }
     
     document.getElementById('resIcon').textContent = icon;
     document.getElementById('resTitle').textContent = title;
-    document.getElementById('resScore').textContent = result.total + '/100';
     
+    // Show different score display for hybrid
+    if (isHybrid) {
+        document.getElementById('resScore').innerHTML = `
+            <div style="font-size:28px">${displayScore}/${maxScore}</div>
+            <div style="font-size:14px;color:#f59e0b;margin-top:5px">⏳ +40 pts pending facilitator review</div>
+        `;
+    } else {
+        document.getElementById('resScore').textContent = result.total + '/100';
+    }
+    
+    // Build breakdown HTML
     let html = '<h4>Score Breakdown</h4>';
+    
+    if (isHybrid) {
+        html += '<div style="background:#d1fae5;padding:8px;border-radius:6px;margin-bottom:10px;font-size:13px">✅ <strong>Auto-Evaluated (60 pts max)</strong></div>';
+    }
+    
     result.breakdown.forEach(b => {
-        html += `<div class="bd-row"><span>${b.name}${b.reason ? ` <small style="color:#666">(${b.reason})</small>` : ''}</span><span>${b.score}/${b.max}</span></div>`;
+        const isPending = b.type === 'manual' && b.status === 'pending';
+        const rowStyle = isPending ? 'background:#fef3c7;' : '';
+        const scoreDisplay = isPending ? `<span style="color:#d97706">Pending</span>` : `${b.score}/${b.max}`;
+        
+        html += `<div class="bd-row" style="${rowStyle}">
+            <span>${b.name}${b.reason ? ` <small style="color:#666">(${b.reason})</small>` : ''}${b.note ? ` <small style="color:#d97706">${b.note}</small>` : ''}</span>
+            <span>${scoreDisplay}</span>
+        </div>`;
+        
+        // Add separator before manual section
+        if (b.name === 'Screenshot Quality' && isHybrid) {
+            html += '<div style="background:#fef3c7;padding:8px;border-radius:6px;margin:10px 0;font-size:13px">⏳ <strong>Manual Review Required (40 pts max)</strong></div>';
+        }
     });
-    html += `<div class="bd-row total"><span>TOTAL</span><span>${result.total}/100</span></div>`;
+    
+    if (isHybrid) {
+        html += `<div class="bd-row" style="background:#e0f2fe;font-weight:bold"><span>Auto Score</span><span>${result.autoScore}/${result.maxAutoScore}</span></div>`;
+        html += `<div class="bd-row" style="background:#fef3c7;font-weight:bold"><span>Manual Score</span><span>0/${result.maxManualScore} (pending)</span></div>`;
+        html += `<div class="bd-row total"><span>CURRENT TOTAL</span><span>${result.autoScore}/100</span></div>`;
+        html += `<div style="margin-top:15px;padding:10px;background:#fef9c3;border-radius:8px;font-size:13px">
+            <strong>📌 Note:</strong> Your facilitator will review your Tinkercad simulation and award up to 40 additional points for:
+            <ul style="margin:5px 0 0 15px;padding:0">
+                <li>Circuit Correctness (15 pts)</li>
+                <li>Simulation Working (15 pts)</li>
+                <li>Components Connected Properly (10 pts)</li>
+            </ul>
+        </div>`;
+    } else {
+        html += `<div class="bd-row total"><span>TOTAL</span><span>${result.total}/100</span></div>`;
+    }
+    
     document.getElementById('resBreakdown').innerHTML = html;
     
     const modal = document.getElementById('resultOverlay');
@@ -1469,18 +1624,32 @@ async function loadDashboard() {
     const dept = document.getElementById('filterDept').value || (currentUser.type === 'facilitator' ? currentUser.dept : null);
     const status = document.getElementById('filterStatus').value || null;
     
-    dashboardData = await loadAllSubmissions(dept, status);
+    // Load data - handle pending_review specially
+    let filterStatus = status;
+    if (status === 'pending_review') {
+        filterStatus = 'submitted'; // Load submitted, then filter for pending
+    }
+    
+    dashboardData = await loadAllSubmissions(dept, filterStatus);
+    
+    // Apply pending_review filter
+    if (status === 'pending_review') {
+        dashboardData = dashboardData.filter(s => 
+            s.question_type !== 'code' && s.manual_pending && !s.manual_score
+        );
+    }
     
     // Calculate stats
     const total = dashboardData.length;
     const submitted = dashboardData.filter(s => s.status === 'submitted');
+    const pendingReview = dashboardData.filter(s => s.question_type !== 'code' && s.manual_pending && !s.manual_score);
     const avgScore = submitted.length ? Math.round(submitted.reduce((sum, s) => sum + (s.total_score || 0), 0) / submitted.length) : 0;
     const passed = dashboardData.filter(s => (s.total_score || 0) >= 40).length;
     
     document.getElementById('statTotal').textContent = total;
     document.getElementById('statAvg').textContent = avgScore + '%';
     document.getElementById('statSubmitted').textContent = submitted.length;
-    document.getElementById('statPassed').textContent = passed;
+    document.getElementById('statPassed').textContent = pendingReview.length > 0 ? `${passed} (⏳${pendingReview.length})` : passed;
     
     if (dashboardData.length === 0) {
         document.getElementById('tableContainer').innerHTML = '<div class="loading"><p>No submissions yet</p></div>';
@@ -1495,21 +1664,38 @@ async function loadDashboard() {
     
     dashboardData.forEach(s => {
         const sc = s.total_score || 0;
-        const cls = sc >= 70 ? 'score-high' : sc >= 40 ? 'score-medium' : 'score-low';
+        const isHybrid = s.question_type !== 'code' && s.manual_pending;
+        const finalScore = isHybrid ? (s.auto_score || 0) + (s.manual_score || 0) : sc;
+        const cls = finalScore >= 70 ? 'score-high' : finalScore >= 40 ? 'score-medium' : 'score-low';
         const stCls = s.status === 'submitted' ? 'status-submitted' : 'status-saved';
         
-        html += `<tr>
+        // Show pending badge for hybrid submissions
+        let scoreDisplay = '';
+        if (isHybrid && !s.manual_score) {
+            scoreDisplay = `<span class="score-badge ${cls}">${s.auto_score || 0}/60</span> <span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:11px">⏳ +40 pending</span>`;
+        } else if (isHybrid && s.manual_score) {
+            scoreDisplay = `<span class="score-badge ${cls}">${finalScore}/100</span> <span style="background:#d1fae5;color:#065f46;padding:2px 6px;border-radius:4px;font-size:11px">✅ Graded</span>`;
+        } else {
+            scoreDisplay = `<span class="score-badge ${cls}">${finalScore}/100</span>`;
+        }
+        
+        // Different button for pending reviews
+        let actionBtns = `<button class="btn btn-secondary" style="padding:0.3rem 0.6rem;font-size:0.75rem" onclick="viewSubmission('${s.roll_no}')">View</button> `;
+        if (isHybrid && !s.manual_score) {
+            actionBtns += `<button class="btn btn-primary" style="padding:0.3rem 0.6rem;font-size:0.75rem;background:#f59e0b" onclick="gradeSubmission('${s.roll_no}')">⏳ Grade Now</button>`;
+        } else {
+            actionBtns += `<button class="btn btn-primary" style="padding:0.3rem 0.6rem;font-size:0.75rem" onclick="gradeSubmission('${s.roll_no}')">Grade</button>`;
+        }
+        
+        html += `<tr ${isHybrid && !s.manual_score ? 'style="background:#fef9c3"' : ''}>
             <td><strong>${s.name}</strong></td>
             <td>${s.roll_no}</td>
             <td>${s.department}</td>
             <td>${s.question_id}</td>
-            <td><span class="score-badge ${cls}">${sc}/100</span></td>
+            <td>${scoreDisplay}</td>
             <td><span class="status-badge ${stCls}">${s.status}</span></td>
             <td>${s.time_taken || '-'}</td>
-            <td>
-                <button class="btn btn-secondary" style="padding:0.3rem 0.6rem;font-size:0.75rem" onclick="viewSubmission('${s.roll_no}')">View</button>
-                <button class="btn btn-primary" style="padding:0.3rem 0.6rem;font-size:0.75rem" onclick="gradeSubmission('${s.roll_no}')">Grade</button>
-            </td>
+            <td>${actionBtns}</td>
         </tr>`;
     });
     
@@ -1551,38 +1737,147 @@ function gradeSubmission(rollNo) {
     const s = dashboardData.find(x => x.roll_no === rollNo);
     if (!s) return;
     
-    document.getElementById('gradeContent').innerHTML = `
-        <p><strong>${s.name}</strong> (${s.roll_no})</p>
-        <p>Auto Score: ${s.total_score}/100</p>
-        <div class="form-group" style="margin-top:1rem">
-            <label>Manual Score (0-100)</label>
-            <input type="number" id="manualScore" min="0" max="100" value="${s.manual_score || s.total_score}">
+    const isHybrid = s.question_type !== 'code';
+    const ans = s.answers || {};
+    
+    let html = `
+        <div style="border-bottom:1px solid #e5e7eb;padding-bottom:10px;margin-bottom:15px">
+            <p><strong>${s.name}</strong> (${s.roll_no})</p>
+            <p>Department: ${s.department} | Question: ${s.question_id}</p>
         </div>
-        <div class="form-group">
-            <label>Comments</label>
-            <textarea id="gradeComments" class="text-area" style="min-height:80px">${s.comments || ''}</textarea>
-        </div>
-        <button class="btn btn-primary btn-lg" style="width:100%" onclick="saveGrade('${rollNo}')">💾 Save Grade</button>
     `;
-    document.getElementById('gradeModal').classList.add('active');
-}
-
-async function saveGrade(rollNo) {
-    const score = parseInt(document.getElementById('manualScore').value);
-    if (isNaN(score) || score < 0 || score > 100) {
-        alert('Enter valid score (0-100)');
-        return;
+    
+    if (isHybrid) {
+        // HYBRID GRADING - ECE/EEE/MECH
+        html += `
+            <div style="background:#e0f2fe;padding:10px;border-radius:8px;margin-bottom:15px">
+                <strong>📊 Auto Score:</strong> ${s.auto_score || 0}/60 points
+            </div>
+            
+            <div style="background:#fef3c7;padding:10px;border-radius:8px;margin-bottom:15px">
+                <strong>🔗 Tinkercad Link:</strong><br>
+                <a href="${ans.link || '#'}" target="_blank" style="word-break:break-all;color:#2563eb">${ans.link || 'Not provided'}</a>
+                <br><button onclick="window.open('${ans.link}','_blank')" style="margin-top:8px" class="btn btn-secondary">🔍 Open Tinkercad to Verify</button>
+            </div>
+            
+            <h4 style="margin:15px 0 10px">⚡ Manual Evaluation (40 points max)</h4>
+            <p style="font-size:13px;color:#6b7280;margin-bottom:15px">Review the Tinkercad simulation and award points:</p>
+            
+            <div class="form-group">
+                <label>🔧 Circuit Correctness (0-15 pts)</label>
+                <p style="font-size:12px;color:#6b7280;margin:2px 0 5px">Are all components connected correctly? Is the circuit design appropriate?</p>
+                <input type="number" id="manualCircuit" min="0" max="15" value="${s.manual_circuit || 0}" style="width:100%">
+            </div>
+            
+            <div class="form-group">
+                <label>✅ Simulation Works (0-15 pts)</label>
+                <p style="font-size:12px;color:#6b7280;margin:2px 0 5px">Does the simulation run? Do outputs match expected behavior?</p>
+                <input type="number" id="manualSimulation" min="0" max="15" value="${s.manual_simulation || 0}" style="width:100%">
+            </div>
+            
+            <div class="form-group">
+                <label>🔌 Components Connected Properly (0-10 pts)</label>
+                <p style="font-size:12px;color:#6b7280;margin:2px 0 5px">Are wiring connections neat? Are required components present?</p>
+                <input type="number" id="manualComponents" min="0" max="10" value="${s.manual_components || 0}" style="width:100%">
+            </div>
+            
+            <div style="background:#f3f4f6;padding:10px;border-radius:8px;margin:15px 0">
+                <strong>Manual Total:</strong> <span id="manualTotalPreview">${(s.manual_circuit || 0) + (s.manual_simulation || 0) + (s.manual_components || 0)}</span>/40
+                <br><strong>Final Score:</strong> <span id="finalScorePreview">${(s.auto_score || 0) + (s.manual_circuit || 0) + (s.manual_simulation || 0) + (s.manual_components || 0)}</span>/100
+            </div>
+        `;
+    } else {
+        // CODE GRADING - CSE/IT (already auto-evaluated, manual override)
+        html += `
+            <div style="background:#d1fae5;padding:10px;border-radius:8px;margin-bottom:15px">
+                <strong>📊 Auto Score:</strong> ${s.total_score || 0}/100 points (fully evaluated)
+            </div>
+            
+            <div class="form-group">
+                <label>Override Score (0-100) - Optional</label>
+                <p style="font-size:12px;color:#6b7280;margin:2px 0 5px">Only change if auto-evaluation needs correction</p>
+                <input type="number" id="manualScore" min="0" max="100" value="${s.manual_score || s.total_score}">
+            </div>
+        `;
     }
     
-    const comments = document.getElementById('gradeComments').value;
-    const success = await updateGrade(rollNo, score, comments, currentUser.name);
+    html += `
+        <div class="form-group">
+            <label>📝 Comments/Feedback</label>
+            <textarea id="gradeComments" class="text-area" style="min-height:80px" placeholder="Provide feedback to the student...">${s.comments || ''}</textarea>
+        </div>
+        <button class="btn btn-primary btn-lg" style="width:100%" onclick="saveGrade('${rollNo}', ${isHybrid})">💾 Save Grade</button>
+    `;
+    
+    document.getElementById('gradeContent').innerHTML = html;
+    document.getElementById('gradeModal').classList.add('active');
+    
+    // Add live preview for hybrid
+    if (isHybrid) {
+        const updatePreview = () => {
+            const c = parseInt(document.getElementById('manualCircuit').value) || 0;
+            const s = parseInt(document.getElementById('manualSimulation').value) || 0;
+            const p = parseInt(document.getElementById('manualComponents').value) || 0;
+            const total = c + s + p;
+            document.getElementById('manualTotalPreview').textContent = total;
+            document.getElementById('finalScorePreview').textContent = (parseInt(dashboardData.find(x => x.roll_no === rollNo).auto_score) || 0) + total;
+        };
+        document.getElementById('manualCircuit').addEventListener('input', updatePreview);
+        document.getElementById('manualSimulation').addEventListener('input', updatePreview);
+        document.getElementById('manualComponents').addEventListener('input', updatePreview);
+    }
+}
+
+async function saveGrade(rollNo, isHybrid = false) {
+    let manualScore = 0;
+    let updates = {};
+    
+    if (isHybrid) {
+        const circuit = parseInt(document.getElementById('manualCircuit').value) || 0;
+        const simulation = parseInt(document.getElementById('manualSimulation').value) || 0;
+        const components = parseInt(document.getElementById('manualComponents').value) || 0;
+        
+        if (circuit < 0 || circuit > 15 || simulation < 0 || simulation > 15 || components < 0 || components > 10) {
+            alert('Enter valid scores within limits');
+            return;
+        }
+        
+        manualScore = circuit + simulation + components;
+        const s = dashboardData.find(x => x.roll_no === rollNo);
+        const finalScore = (s.auto_score || 0) + manualScore;
+        
+        updates = {
+            manual_score: manualScore,
+            manual_circuit: circuit,
+            manual_simulation: simulation,
+            manual_components: components,
+            manual_pending: false,
+            total_score: finalScore
+        };
+    } else {
+        manualScore = parseInt(document.getElementById('manualScore').value);
+        if (isNaN(manualScore) || manualScore < 0 || manualScore > 100) {
+            alert('Enter valid score (0-100)');
+            return;
+        }
+        updates = {
+            manual_score: manualScore,
+            total_score: manualScore
+        };
+    }
+    
+    updates.comments = document.getElementById('gradeComments').value;
+    updates.graded_by = currentUser.name;
+    updates.graded_at = new Date().toISOString();
+    
+    const success = await updateGrade(rollNo, updates);
     
     if (success) {
-        alert('✅ Grade saved!');
+        alert('✅ Grade saved successfully!');
         document.getElementById('gradeModal').classList.remove('active');
         loadDashboard();
     } else {
-        alert('❌ Failed to save');
+        alert('❌ Failed to save grade');
     }
 }
 
