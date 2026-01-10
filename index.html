@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JKKN AI Assessment Portal</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; }
@@ -229,7 +228,7 @@
         
         .button-group { display: flex; gap: 1rem; }
         
-        /* Final Submit - RED and PROMINENT */
+        /* Final Submit */
         #finalSubmitBtn {
             background: linear-gradient(135deg, #dc3545, #c82333);
             color: white;
@@ -334,7 +333,6 @@
         
         pre { background: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: 8px; overflow-x: auto; max-height: 300px; }
         
-        /* Loading */
         .loading { text-align: center; padding: 2rem; color: #666; }
         .spinner { display: inline-block; width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #FF6B35; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -372,7 +370,7 @@
 <div id="loginPage" class="login-container">
     <div class="login-box">
         <h2>🚀 Start Assessment</h2>
-        <p style="text-align:center;color:#28a745;margin-bottom:1rem" id="cloudStatus">☁️ Cloud Database Connected</p>
+        <p style="text-align:center;color:#666;margin-bottom:1rem" id="cloudStatus">⏳ Connecting to cloud...</p>
         
         <div class="tabs">
             <div class="tab active" onclick="switchTab('learner')">👨‍🎓 Learner</div>
@@ -572,49 +570,59 @@
 
 <script>
 // =====================================================
-// SUPABASE CONFIG
+// SUPABASE REST API CONFIG
 // =====================================================
 const SUPABASE_URL = 'https://yrwbeperjwcaylnixdxm.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlyd2JlcGVyandjYXlsbml4ZHhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgwNTcwNjEsImV4cCI6MjA4MzYzMzA2MX0.0hVzidXvnZ03C5Lj7XM9egpbbGFS5IiiOpDaVYAxYeM';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Direct REST API helper
+async function supabaseRequest(endpoint, method = 'GET', body = null) {
+    const options = {
+        method,
+        headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': method === 'POST' ? 'return=representation' : 'return=minimal'
+        }
+    };
+    
+    if (body) {
+        options.body = JSON.stringify(body);
+    }
+    
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, options);
+    
+    if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error);
+    }
+    
+    const text = await response.text();
+    return text ? JSON.parse(text) : null;
+}
 
 // Test connection
 async function testConnection() {
     console.log('Testing Supabase connection...');
     try {
-        const { data, error } = await supabase.from('submissions').select('id').limit(1);
-        console.log('Connection result:', { data, error });
-        
-        if (error) {
-            console.error('Supabase error:', error);
-            // Even with error, if we got a response, connection works
-            if (error.code === 'PGRST116') {
-                // No rows found - that's fine, table is empty
-                console.log('Table is empty but connected');
-            } else {
-                throw error;
-            }
-        }
+        const data = await supabaseRequest('submissions?select=id&limit=1');
+        console.log('✅ Connection successful:', data);
         
         document.getElementById('dbStatus').textContent = '🟢 Cloud Connected';
         document.getElementById('dbStatus').className = 'db-status db-online';
         document.getElementById('cloudStatus').textContent = '☁️ Cloud Database Connected';
         document.getElementById('cloudStatus').style.color = '#28a745';
-        console.log('✅ Supabase connected!');
         return true;
     } catch (err) {
-        console.error('Supabase connection failed:', err);
+        console.error('Connection failed:', err.message);
         document.getElementById('dbStatus').textContent = '🔴 Offline';
         document.getElementById('dbStatus').className = 'db-status db-offline';
-        document.getElementById('cloudStatus').textContent = '⚠️ Connection issue - using offline mode';
+        document.getElementById('cloudStatus').textContent = '⚠️ Using offline mode';
         document.getElementById('cloudStatus').style.color = '#dc3545';
         return false;
     }
 }
-
-// Run connection test on load
-setTimeout(testConnection, 500);
 
 // =====================================================
 // QUESTIONS
@@ -744,7 +752,7 @@ function evaluate() {
 }
 
 // =====================================================
-// DATABASE OPERATIONS
+// DATABASE OPERATIONS (REST API)
 // =====================================================
 async function saveToDatabase(data, isSubmit = false) {
     try {
@@ -765,85 +773,69 @@ async function saveToDatabase(data, isSubmit = false) {
             time_taken: data.time
         };
         
-        // Upsert (update if exists, insert if not)
-        const { data: result, error } = await supabase
-            .from('submissions')
-            .upsert(record, { onConflict: 'roll_no' })
-            .select();
+        // Check if exists
+        const existing = await supabaseRequest(`submissions?roll_no=eq.${encodeURIComponent(data.rollNo)}&select=id`);
         
-        if (error) throw error;
-        console.log('✅ Saved to database:', result);
+        if (existing && existing.length > 0) {
+            // Update
+            await supabaseRequest(`submissions?roll_no=eq.${encodeURIComponent(data.rollNo)}`, 'PATCH', record);
+        } else {
+            // Insert
+            await supabaseRequest('submissions', 'POST', record);
+        }
+        
+        console.log('✅ Saved to database');
         return true;
     } catch (err) {
-        console.error('Database save error:', err);
+        console.error('Database save error:', err.message);
         return false;
     }
 }
 
 async function checkExistingSubmission(rollNo) {
     try {
-        const { data, error } = await supabase
-            .from('submissions')
-            .select('*')
-            .eq('roll_no', rollNo)
-            .eq('status', 'submitted')
-            .single();
-        
-        if (error && error.code !== 'PGRST116') throw error;
-        return data;
+        const data = await supabaseRequest(`submissions?roll_no=eq.${encodeURIComponent(rollNo)}&status=eq.submitted&select=*`);
+        return data && data.length > 0 ? data[0] : null;
     } catch (err) {
-        console.error('Check submission error:', err);
+        console.error('Check submission error:', err.message);
         return null;
     }
 }
 
 async function loadSavedProgress(rollNo) {
     try {
-        const { data, error } = await supabase
-            .from('submissions')
-            .select('*')
-            .eq('roll_no', rollNo)
-            .single();
-        
-        if (error && error.code !== 'PGRST116') throw error;
-        return data;
+        const data = await supabaseRequest(`submissions?roll_no=eq.${encodeURIComponent(rollNo)}&select=*`);
+        return data && data.length > 0 ? data[0] : null;
     } catch (err) {
-        console.error('Load progress error:', err);
+        console.error('Load progress error:', err.message);
         return null;
     }
 }
 
 async function loadAllSubmissions(dept = null, status = null) {
     try {
-        let query = supabase.from('submissions').select('*').order('created_at', { ascending: false });
+        let query = 'submissions?select=*&order=created_at.desc';
+        if (dept) query += `&department=eq.${encodeURIComponent(dept)}`;
+        if (status) query += `&status=eq.${status}`;
         
-        if (dept) query = query.eq('department', dept);
-        if (status) query = query.eq('status', status);
-        
-        const { data, error } = await query;
-        if (error) throw error;
+        const data = await supabaseRequest(query);
         return data || [];
     } catch (err) {
-        console.error('Load submissions error:', err);
+        console.error('Load submissions error:', err.message);
         return [];
     }
 }
 
 async function updateGrade(rollNo, manualScore, comments, gradedBy) {
     try {
-        const { error } = await supabase
-            .from('submissions')
-            .update({ 
-                manual_score: manualScore, 
-                comments: comments,
-                graded_by: gradedBy 
-            })
-            .eq('roll_no', rollNo);
-        
-        if (error) throw error;
+        await supabaseRequest(
+            `submissions?roll_no=eq.${encodeURIComponent(rollNo)}`,
+            'PATCH',
+            { manual_score: manualScore, comments: comments, graded_by: gradedBy }
+        );
         return true;
     } catch (err) {
-        console.error('Update grade error:', err);
+        console.error('Update grade error:', err.message);
         return false;
     }
 }
@@ -877,10 +869,10 @@ async function startAssessment() {
         return;
     }
     
-    // Check if already submitted in database
+    // Check if already submitted
     const existing = await checkExistingSubmission(rollNo);
     if (existing) {
-        alert(`Already submitted!\n\nScore: ${existing.total_score}/100\nSubmitted at: ${new Date(existing.created_at).toLocaleString()}`);
+        alert(`Already submitted!\n\nScore: ${existing.total_score}/100\nTime: ${existing.time_taken}`);
         return;
     }
     
@@ -891,7 +883,7 @@ async function startAssessment() {
     currentQuestion = qs[idx];
     currentUser = { name, rollNo, dept, year, email, phone };
     
-    // Load saved progress from database
+    // Load saved progress
     const saved = await loadSavedProgress(rollNo);
     if (saved && saved.answers) {
         answers = saved.answers;
@@ -1130,10 +1122,8 @@ async function saveWork() {
     
     if (success) {
         document.getElementById('saveStatus').innerHTML = `<span class="saved">✅ Saved to cloud! Score: ${result.total}/100</span>`;
-        alert('✅ Progress saved to cloud!\n\nScore: ' + result.total + '/100\n\nYou can continue from any device.');
     } else {
         document.getElementById('saveStatus').innerHTML = '❌ Save failed - try again';
-        alert('❌ Could not save to cloud. Please try again.');
     }
 }
 
@@ -1225,7 +1215,6 @@ async function showDashboard() {
     document.getElementById('userBadge').textContent = currentUser.name + (currentUser.type === 'facilitator' ? ` (${currentUser.dept})` : ' (Admin)');
     document.getElementById('logoutBtn').style.display = 'block';
     
-    // Set filter for facilitator
     if (currentUser.type === 'facilitator') {
         document.getElementById('filterDept').value = currentUser.dept;
         document.getElementById('filterDept').disabled = true;
@@ -1253,7 +1242,6 @@ async function loadDashboard() {
     document.getElementById('statSubmitted').textContent = submitted.length;
     document.getElementById('statPassed').textContent = passed;
     
-    // Render table
     if (dashboardData.length === 0) {
         document.getElementById('tableContainer').innerHTML = '<div class="loading"><p>No submissions yet</p></div>';
         return;
@@ -1293,7 +1281,7 @@ function viewSubmission(rollNo) {
     const s = dashboardData.find(x => x.roll_no === rollNo);
     if (!s) return;
     
-    const answers = s.answers || {};
+    const ans = s.answers || {};
     
     let html = `
         <p><strong>Student:</strong> ${s.name} (${s.roll_no})</p>
@@ -1303,17 +1291,16 @@ function viewSubmission(rollNo) {
         <p><strong>Question:</strong> ${s.question_id}</p>
         <p><strong>Status:</strong> <span class="status-badge ${s.status === 'submitted' ? 'status-submitted' : 'status-saved'}">${s.status}</span></p>
         <p><strong>Auto Score:</strong> <span class="score-badge ${s.total_score >= 70 ? 'score-high' : s.total_score >= 40 ? 'score-medium' : 'score-low'}">${s.total_score}/100</span></p>
-        ${s.manual_score ? `<p><strong>Manual Score:</strong> ${s.manual_score}/100 (by ${s.graded_by})</p>` : ''}
+        ${s.manual_score ? `<p><strong>Manual Score:</strong> ${s.manual_score}/100</p>` : ''}
         ${s.comments ? `<p><strong>Comments:</strong> ${s.comments}</p>` : ''}
         <p><strong>Time:</strong> ${s.time_taken || '-'}</p>
-        <p><strong>Submitted:</strong> ${new Date(s.created_at).toLocaleString()}</p>
     `;
     
     if (s.question_type === 'code') {
-        html += `<h4 style="margin-top:1rem">Code</h4><pre>${(answers.code || '').replace(/</g, '&lt;')}</pre>`;
+        html += `<h4 style="margin-top:1rem">Code</h4><pre>${(ans.code || 'No code').replace(/</g, '&lt;')}</pre>`;
     } else {
-        html += `<h4 style="margin-top:1rem">Tinkercad Link</h4><p><a href="${answers.link || '#'}" target="_blank">${answers.link || 'N/A'}</a></p>`;
-        html += `<h4>Documentation</h4><pre style="background:#f5f5f5;color:#333">${(answers.desc || '').replace(/</g, '&lt;')}</pre>`;
+        html += `<h4 style="margin-top:1rem">Tinkercad Link</h4><p><a href="${ans.link || '#'}" target="_blank">${ans.link || 'N/A'}</a></p>`;
+        html += `<h4>Documentation</h4><pre style="background:#f5f5f5;color:#333">${(ans.desc || 'No description').replace(/</g, '&lt;')}</pre>`;
     }
     
     document.getElementById('viewContent').innerHTML = html;
@@ -1351,11 +1338,11 @@ async function saveGrade(rollNo) {
     const success = await updateGrade(rollNo, score, comments, currentUser.name);
     
     if (success) {
-        alert('✅ Grade saved to cloud!');
+        alert('✅ Grade saved!');
         document.getElementById('gradeModal').classList.remove('active');
         loadDashboard();
     } else {
-        alert('❌ Failed to save grade');
+        alert('❌ Failed to save');
     }
 }
 
@@ -1385,8 +1372,8 @@ function exportExcel() {
 // =====================================================
 // INIT
 // =====================================================
-console.log('🎓 JKKN Portal with Supabase Ready');
-
+console.log('🎓 JKKN Portal with Supabase REST API Ready');
+setTimeout(testConnection, 500);
 </script>
 </body>
 </html>
