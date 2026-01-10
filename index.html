@@ -1045,6 +1045,16 @@ function evaluate() {
 // =====================================================
 async function saveToDatabase(data, isSubmit = false) {
     try {
+        // Store extra evaluation data in answers JSON (existing column)
+        const answersWithMeta = {
+            ...data.answers,
+            _evaluation: {
+                autoScore: data.autoScore || 0,
+                manualPending: data.manualPending || false,
+                breakdown: data.breakdown || null
+            }
+        };
+        
         const record = {
             roll_no: data.rollNo,
             name: data.name,
@@ -1055,15 +1065,11 @@ async function saveToDatabase(data, isSubmit = false) {
             question_id: data.questionId,
             question_type: data.type,
             status: isSubmit ? 'submitted' : 'saved',
-            answers: data.answers,
+            answers: answersWithMeta,
             code_score: data.codeScore || 0,
             screenshot_score: data.screenshotScore || 0,
-            auto_score: data.autoScore || 0,
-            manual_score: data.manualScore || 0,
-            manual_pending: data.manualPending || false,
             total_score: data.totalScore,
-            time_taken: data.time,
-            evaluation_breakdown: data.breakdown || null
+            time_taken: data.time
         };
         
         // Check if exists
@@ -1634,15 +1640,19 @@ async function loadDashboard() {
     
     // Apply pending_review filter
     if (status === 'pending_review') {
-        dashboardData = dashboardData.filter(s => 
-            s.question_type !== 'code' && s.manual_pending && !s.manual_score
-        );
+        dashboardData = dashboardData.filter(s => {
+            const evalData = s.answers?._evaluation || {};
+            return s.question_type !== 'code' && evalData.manualPending && !s.manual_score;
+        });
     }
     
     // Calculate stats
     const total = dashboardData.length;
     const submitted = dashboardData.filter(s => s.status === 'submitted');
-    const pendingReview = dashboardData.filter(s => s.question_type !== 'code' && s.manual_pending && !s.manual_score);
+    const pendingReview = dashboardData.filter(s => {
+        const evalData = s.answers?._evaluation || {};
+        return s.question_type !== 'code' && evalData.manualPending && !s.manual_score;
+    });
     const avgScore = submitted.length ? Math.round(submitted.reduce((sum, s) => sum + (s.total_score || 0), 0) / submitted.length) : 0;
     const passed = dashboardData.filter(s => (s.total_score || 0) >= 40).length;
     
@@ -1664,16 +1674,19 @@ async function loadDashboard() {
     
     dashboardData.forEach(s => {
         const sc = s.total_score || 0;
-        const isHybrid = s.question_type !== 'code' && s.manual_pending;
-        const finalScore = isHybrid ? (s.auto_score || 0) + (s.manual_score || 0) : sc;
+        // Read evaluation data from answers JSON
+        const evalData = s.answers?._evaluation || {};
+        const isHybrid = s.question_type !== 'code' && evalData.manualPending && !s.manual_score;
+        const autoScore = evalData.autoScore || s.code_score || 0;
+        const finalScore = s.manual_score ? (autoScore + s.manual_score) : sc;
         const cls = finalScore >= 70 ? 'score-high' : finalScore >= 40 ? 'score-medium' : 'score-low';
         const stCls = s.status === 'submitted' ? 'status-submitted' : 'status-saved';
         
         // Show pending badge for hybrid submissions
         let scoreDisplay = '';
-        if (isHybrid && !s.manual_score) {
-            scoreDisplay = `<span class="score-badge ${cls}">${s.auto_score || 0}/60</span> <span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:11px">⏳ +40 pending</span>`;
-        } else if (isHybrid && s.manual_score) {
+        if (isHybrid) {
+            scoreDisplay = `<span class="score-badge ${cls}">${autoScore}/60</span> <span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:11px">⏳ +40 pending</span>`;
+        } else if (s.question_type !== 'code' && s.manual_score) {
             scoreDisplay = `<span class="score-badge ${cls}">${finalScore}/100</span> <span style="background:#d1fae5;color:#065f46;padding:2px 6px;border-radius:4px;font-size:11px">✅ Graded</span>`;
         } else {
             scoreDisplay = `<span class="score-badge ${cls}">${finalScore}/100</span>`;
@@ -1681,13 +1694,13 @@ async function loadDashboard() {
         
         // Different button for pending reviews
         let actionBtns = `<button class="btn btn-secondary" style="padding:0.3rem 0.6rem;font-size:0.75rem" onclick="viewSubmission('${s.roll_no}')">View</button> `;
-        if (isHybrid && !s.manual_score) {
+        if (isHybrid) {
             actionBtns += `<button class="btn btn-primary" style="padding:0.3rem 0.6rem;font-size:0.75rem;background:#f59e0b" onclick="gradeSubmission('${s.roll_no}')">⏳ Grade Now</button>`;
         } else {
             actionBtns += `<button class="btn btn-primary" style="padding:0.3rem 0.6rem;font-size:0.75rem" onclick="gradeSubmission('${s.roll_no}')">Grade</button>`;
         }
         
-        html += `<tr ${isHybrid && !s.manual_score ? 'style="background:#fef9c3"' : ''}>
+        html += `<tr ${isHybrid ? 'style="background:#fef9c3"' : ''}>
             <td><strong>${s.name}</strong></td>
             <td>${s.roll_no}</td>
             <td>${s.department}</td>
@@ -1739,6 +1752,8 @@ function gradeSubmission(rollNo) {
     
     const isHybrid = s.question_type !== 'code';
     const ans = s.answers || {};
+    const evalData = ans._evaluation || {};
+    const autoScore = evalData.autoScore || s.code_score || 0;
     
     let html = `
         <div style="border-bottom:1px solid #e5e7eb;padding-bottom:10px;margin-bottom:15px">
@@ -1751,7 +1766,7 @@ function gradeSubmission(rollNo) {
         // HYBRID GRADING - ECE/EEE/MECH
         html += `
             <div style="background:#e0f2fe;padding:10px;border-radius:8px;margin-bottom:15px">
-                <strong>📊 Auto Score:</strong> ${s.auto_score || 0}/60 points
+                <strong>📊 Auto Score:</strong> ${autoScore}/60 points
             </div>
             
             <div style="background:#fef3c7;padding:10px;border-radius:8px;margin-bottom:15px">
@@ -1766,24 +1781,24 @@ function gradeSubmission(rollNo) {
             <div class="form-group">
                 <label>🔧 Circuit Correctness (0-15 pts)</label>
                 <p style="font-size:12px;color:#6b7280;margin:2px 0 5px">Are all components connected correctly? Is the circuit design appropriate?</p>
-                <input type="number" id="manualCircuit" min="0" max="15" value="${s.manual_circuit || 0}" style="width:100%">
+                <input type="number" id="manualCircuit" min="0" max="15" value="0" style="width:100%">
             </div>
             
             <div class="form-group">
                 <label>✅ Simulation Works (0-15 pts)</label>
                 <p style="font-size:12px;color:#6b7280;margin:2px 0 5px">Does the simulation run? Do outputs match expected behavior?</p>
-                <input type="number" id="manualSimulation" min="0" max="15" value="${s.manual_simulation || 0}" style="width:100%">
+                <input type="number" id="manualSimulation" min="0" max="15" value="0" style="width:100%">
             </div>
             
             <div class="form-group">
                 <label>🔌 Components Connected Properly (0-10 pts)</label>
                 <p style="font-size:12px;color:#6b7280;margin:2px 0 5px">Are wiring connections neat? Are required components present?</p>
-                <input type="number" id="manualComponents" min="0" max="10" value="${s.manual_components || 0}" style="width:100%">
+                <input type="number" id="manualComponents" min="0" max="10" value="0" style="width:100%">
             </div>
             
             <div style="background:#f3f4f6;padding:10px;border-radius:8px;margin:15px 0">
-                <strong>Manual Total:</strong> <span id="manualTotalPreview">${(s.manual_circuit || 0) + (s.manual_simulation || 0) + (s.manual_components || 0)}</span>/40
-                <br><strong>Final Score:</strong> <span id="finalScorePreview">${(s.auto_score || 0) + (s.manual_circuit || 0) + (s.manual_simulation || 0) + (s.manual_components || 0)}</span>/100
+                <strong>Manual Total:</strong> <span id="manualTotalPreview">0</span>/40
+                <br><strong>Final Score:</strong> <span id="finalScorePreview">${autoScore}</span>/100
             </div>
         `;
     } else {
@@ -1816,11 +1831,11 @@ function gradeSubmission(rollNo) {
     if (isHybrid) {
         const updatePreview = () => {
             const c = parseInt(document.getElementById('manualCircuit').value) || 0;
-            const s = parseInt(document.getElementById('manualSimulation').value) || 0;
+            const sim = parseInt(document.getElementById('manualSimulation').value) || 0;
             const p = parseInt(document.getElementById('manualComponents').value) || 0;
-            const total = c + s + p;
+            const total = c + sim + p;
             document.getElementById('manualTotalPreview').textContent = total;
-            document.getElementById('finalScorePreview').textContent = (parseInt(dashboardData.find(x => x.roll_no === rollNo).auto_score) || 0) + total;
+            document.getElementById('finalScorePreview').textContent = autoScore + total;
         };
         document.getElementById('manualCircuit').addEventListener('input', updatePreview);
         document.getElementById('manualSimulation').addEventListener('input', updatePreview);
@@ -1844,15 +1859,14 @@ async function saveGrade(rollNo, isHybrid = false) {
         
         manualScore = circuit + simulation + components;
         const s = dashboardData.find(x => x.roll_no === rollNo);
-        const finalScore = (s.auto_score || 0) + manualScore;
+        const autoScore = s.answers?._evaluation?.autoScore || s.code_score || 0;
+        const finalScore = autoScore + manualScore;
         
         updates = {
             manual_score: manualScore,
-            manual_circuit: circuit,
-            manual_simulation: simulation,
-            manual_components: components,
-            manual_pending: false,
-            total_score: finalScore
+            total_score: finalScore,
+            comments: document.getElementById('gradeComments').value,
+            graded_by: currentUser.name
         };
     } else {
         manualScore = parseInt(document.getElementById('manualScore').value);
@@ -1862,13 +1876,11 @@ async function saveGrade(rollNo, isHybrid = false) {
         }
         updates = {
             manual_score: manualScore,
-            total_score: manualScore
+            total_score: manualScore,
+            comments: document.getElementById('gradeComments').value,
+            graded_by: currentUser.name
         };
     }
-    
-    updates.comments = document.getElementById('gradeComments').value;
-    updates.graded_by = currentUser.name;
-    updates.graded_at = new Date().toISOString();
     
     const success = await updateGrade(rollNo, updates);
     
