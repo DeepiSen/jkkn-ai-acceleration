@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JKKN AI Assessment Portal</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; }
+        
+        .header {
+            background: linear-gradient(135deg, #003D5B, #00587a);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 1.3rem; }
+        .user-badge { background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 6px; }
+        .db-status { font-size: 0.75rem; padding: 0.3rem 0.6rem; border-radius: 4px; margin-left: 1rem; }
+        .db-online { background: #28a745; }
+        .db-offline { background: #dc3545; }
+        
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #FF6B35; color: white; }
+        .btn-primary:hover { background: #e55a25; }
+        .btn-secondary { background: #00A7E1; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-outline { background: transparent; border: 2px solid white; color: white; }
+        .btn-lg { padding: 1rem 2rem; font-size: 1.1rem; }
+        .btn-xl { padding: 1.2rem 3rem; font-size: 1.3rem; }
+        
+        .hidden { display: none !important; }
+        
+        /* Login */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: calc(100vh - 70px);
+            padding: 2rem;
+        }
+        .login-box {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 500px;
+        }
+        .login-box h2 { text-align: center; margin-bottom: 1.5rem; color: #003D5B; }
+        
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+        .tab {
+            flex: 1;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            text-align: center;
+        }
+        .tab.active { border-color: #FF6B35; background: #fff5f0; color: #FF6B35; }
+        
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.4rem; font-weight: 600; color: #333; }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.7rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #00A7E1; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        
+        /* Assessment */
+        .assessment-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .sidebar {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            height: fit-content;
+        }
+        
+        .q-badge {
+            background: linear-gradient(135deg, #003D5B, #00A7E1);
+            color: white;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            font-family: monospace;
+            font-weight: 700;
+            font-size: 1.2rem;
+            display: inline-block;
+        }
+        
+        .timer-box {
+            background: #f5f7fa;
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            margin: 1rem 0;
+        }
+        .timer {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #003D5B;
+            font-family: monospace;
+        }
+        
+        .checklist { background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-top: 1rem; }
+        .checklist h4 { margin-bottom: 0.5rem; }
+        .check-item { padding: 0.3rem 0; }
+        .check-item.done { color: #28a745; }
+        
+        .main-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        
+        .scenario-box {
+            background: linear-gradient(135deg, #e8f4f8, #f0f7fa);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 5px solid #00A7E1;
+            margin-bottom: 1.5rem;
+        }
+        .scenario-box h2 { color: #003D5B; margin-bottom: 1rem; }
+        
+        .task-section {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .task-title { font-weight: 700; color: #003D5B; font-size: 1.1rem; }
+        .task-marks { background: #FF6B35; color: white; padding: 0.3rem 0.8rem; border-radius: 20px; font-weight: 600; }
+        
+        .code-editor {
+            width: 100%;
+            min-height: 300px;
+            padding: 1rem;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            resize: vertical;
+        }
+        
+        .text-area {
+            width: 100%;
+            min-height: 150px;
+            padding: 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            resize: vertical;
+        }
+        
+        /* Screenshot */
+        .screenshot-section {
+            border: 3px dashed #00A7E1;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            background: #f0f9ff;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            background: white;
+        }
+        .upload-area:hover { border-color: #00A7E1; }
+        .upload-area.has-file { border-color: #28a745; background: #f0fff4; }
+        .upload-icon { font-size: 3rem; }
+        
+        .preview-box { margin-top: 1rem; display: none; }
+        .preview-box.active { display: block; }
+        .preview-img { max-width: 100%; max-height: 300px; border-radius: 8px; border: 2px solid #28a745; }
+        
+        /* SUBMIT BUTTONS */
+        .submit-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 3px solid #e0e0e0;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .save-status { color: #666; }
+        .save-status.saved { color: #28a745; font-weight: 600; }
+        
+        .button-group { display: flex; gap: 1rem; }
+        
+        /* Final Submit - RED and PROMINENT */
+        #finalSubmitBtn {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+            padding: 1rem 2.5rem;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4); }
+            50% { box-shadow: 0 4px 25px rgba(220, 53, 69, 0.7); }
+        }
+        
+        /* RESULT MODAL */
+        .result-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 999999;
+            justify-content: center;
+            align-items: center;
+        }
+        .result-overlay.show { display: flex !important; }
+        
+        .result-card {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            animation: bounceIn 0.5s;
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .result-icon { font-size: 5rem; }
+        .result-title { font-size: 2rem; color: #003D5B; margin: 1rem 0; }
+        .result-score {
+            font-size: 5rem;
+            font-weight: 800;
+            color: #FF6B35;
+            margin: 1rem 0;
+        }
+        .result-breakdown {
+            background: #f5f7fa;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            text-align: left;
+        }
+        .bd-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .bd-row:last-child { border: none; }
+        .bd-row.total { background: #003D5B; color: white; margin: 0.5rem -1rem -1rem; padding: 1rem; border-radius: 0 0 8px 8px; font-weight: 700; }
+        
+        /* Dashboard */
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: 12px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+        .stat-card h4 { color: #666; font-size: 0.85rem; }
+        .stat-card .value { font-size: 2rem; font-weight: 700; color: #003D5B; }
+        
+        .filters { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .filters select { padding: 0.6rem 1rem; border: 2px solid #e0e0e0; border-radius: 6px; }
+        
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 15px rgba(0,0,0,0.08); }
+        th { background: #003D5B; color: white; padding: 1rem; text-align: left; }
+        td { padding: 0.8rem; border-bottom: 1px solid #eee; }
+        tr:hover { background: #f8f9fa; }
+        
+        .score-badge { padding: 0.3rem 0.7rem; border-radius: 20px; font-weight: 600; }
+        .score-high { background: #d4edda; color: #155724; }
+        .score-medium { background: #fff3cd; color: #856404; }
+        .score-low { background: #f8d7da; color: #721c24; }
+        
+        .status-badge { padding: 0.25rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+        .status-saved { background: #fff3cd; color: #856404; }
+        .status-submitted { background: #d4edda; color: #155724; }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; }
+        .modal.active { display: flex; }
+        .modal-box { background: white; border-radius: 16px; max-width: 800px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 2rem; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px solid #eee; }
+        .modal-close { background: #f5f5f5; border: none; font-size: 1.5rem; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; }
+        
+        pre { background: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: 8px; overflow-x: auto; max-height: 300px; }
+        
+        /* Loading */
+        .loading { text-align: center; padding: 2rem; color: #666; }
+        .spinner { display: inline-block; width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #FF6B35; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        @media (max-width: 900px) {
+            .assessment-layout { grid-template-columns: 1fr; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- RESULT MODAL -->
+<div class="result-overlay" id="resultOverlay">
+    <div class="result-card">
+        <div class="result-icon" id="resIcon">🎉</div>
+        <div class="result-title" id="resTitle">Submitted!</div>
+        <div class="result-score" id="resScore">85/100</div>
+        <div class="result-breakdown" id="resBreakdown"></div>
+        <p style="color:#666;margin-bottom:1.5rem">Your submission has been saved to cloud database.</p>
+        <button class="btn btn-primary btn-xl" onclick="closeResultAndLogout()">✓ Done - Logout</button>
+    </div>
+</div>
+
+<header class="header">
+    <h1>🎓 JKKN AI Assessment Portal</h1>
+    <div style="display:flex;gap:1rem;align-items:center">
+        <span class="db-status" id="dbStatus">⏳ Connecting...</span>
+        <span class="user-badge" id="userBadge"></span>
+        <button class="btn btn-outline" id="logoutBtn" onclick="logout()" style="display:none">Logout</button>
+    </div>
+</header>
+
+<!-- LOGIN -->
+<div id="loginPage" class="login-container">
+    <div class="login-box">
+        <h2>🚀 Start Assessment</h2>
+        <p style="text-align:center;color:#28a745;margin-bottom:1rem" id="cloudStatus">☁️ Cloud Database Connected</p>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('learner')">👨‍🎓 Learner</div>
+            <div class="tab" onclick="switchTab('facilitator')">👨‍🏫 Facilitator</div>
+            <div class="tab" onclick="switchTab('admin')">⚙️ Admin</div>
+        </div>
+
+        <div id="learnerForm">
+            <div class="form-group">
+                <label>Full Name *</label>
+                <input type="text" id="learnerName" placeholder="Your name">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Roll Number *</label>
+                    <input type="text" id="rollNo" placeholder="e.g., 21CS001">
+                </div>
+                <div class="form-group">
+                    <label>Department *</label>
+                    <select id="department">
+                        <option value="">Select</option>
+                        <option value="CSE/IT">CSE/IT</option>
+                        <option value="ECE">ECE</option>
+                        <option value="EEE">EEE</option>
+                        <option value="MECH">MECH</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Year *</label>
+                    <select id="year">
+                        <option value="">Select</option>
+                        <option value="2nd Year">2nd Year</option>
+                        <option value="3rd Year">3rd Year</option>
+                        <option value="4th Year">4th Year</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" id="email" placeholder="your@email.com">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Phone *</label>
+                <input type="tel" id="phone" placeholder="10-digit number">
+            </div>
+            <button class="btn btn-primary btn-lg" style="width:100%;margin-top:1rem" onclick="startAssessment()">
+                🚀 Start Assessment
+            </button>
+        </div>
+
+        <div id="facilitatorForm" class="hidden">
+            <div class="form-group">
+                <label>Name *</label>
+                <input type="text" id="facName">
+            </div>
+            <div class="form-group">
+                <label>Department *</label>
+                <select id="facDept">
+                    <option value="">Select</option>
+                    <option value="CSE/IT">CSE/IT</option>
+                    <option value="ECE">ECE</option>
+                    <option value="EEE">EEE</option>
+                    <option value="MECH">MECH</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Access Code *</label>
+                <input type="password" id="facCode" placeholder="Department code">
+            </div>
+            <button class="btn btn-primary btn-lg" style="width:100%;margin-top:1rem" onclick="loginFacilitator()">
+                📊 Access Dashboard
+            </button>
+        </div>
+
+        <div id="adminForm" class="hidden">
+            <div class="form-group">
+                <label>Email *</label>
+                <input type="email" id="adminEmail" value="admin@jkkn.edu">
+            </div>
+            <div class="form-group">
+                <label>Password *</label>
+                <input type="password" id="adminPass">
+            </div>
+            <button class="btn btn-primary btn-lg" style="width:100%;margin-top:1rem" onclick="loginAdmin()">
+                🔐 Admin Login
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ASSESSMENT -->
+<div id="assessmentPage" class="hidden">
+    <div class="assessment-layout">
+        <aside class="sidebar">
+            <div>
+                <div style="color:#666;font-size:0.85rem">Your Question</div>
+                <div class="q-badge" id="qBadge">-</div>
+            </div>
+            
+            <div class="timer-box">
+                <div style="color:#666;font-size:0.85rem">⏱️ Time</div>
+                <div class="timer" id="timer">00:00:00</div>
+            </div>
+            
+            <div class="checklist">
+                <h4>✅ Checklist</h4>
+                <div id="checklistItems"></div>
+            </div>
+            
+            <div style="margin-top:1rem;background:#fff5f0;padding:1rem;border-radius:8px;text-align:center">
+                <div style="font-size:0.85rem;color:#666">Total Marks</div>
+                <div style="font-size:2rem;font-weight:700;color:#FF6B35">100</div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="scenario-box">
+                <h2 id="qTitle">Loading...</h2>
+                <p id="qScenario" style="color:#444;line-height:1.8"></p>
+            </div>
+
+            <div id="tasksArea"></div>
+
+            <div class="submit-row">
+                <div class="save-status" id="saveStatus">💡 Complete your work and submit</div>
+                <div class="button-group">
+                    <button class="btn btn-success btn-lg" onclick="saveWork()">
+                        💾 Save Progress
+                    </button>
+                    <button id="finalSubmitBtn" onclick="finalSubmit()">
+                        🚀 FINAL SUBMIT
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboardPage" class="hidden">
+    <div class="container">
+        <h2 style="margin-bottom:1.5rem;color:#003D5B">📊 Dashboard <span style="font-size:0.9rem;color:#28a745">(Real-time Cloud Data)</span></h2>
+        
+        <div class="stats-grid">
+            <div class="stat-card"><h4>Total</h4><div class="value" id="statTotal">0</div></div>
+            <div class="stat-card"><h4>Average</h4><div class="value" id="statAvg">0%</div></div>
+            <div class="stat-card"><h4>Submitted</h4><div class="value" id="statSubmitted">0</div></div>
+            <div class="stat-card"><h4>Passed (≥40)</h4><div class="value" id="statPassed">0</div></div>
+        </div>
+        
+        <div class="filters">
+            <select id="filterDept" onchange="loadDashboard()">
+                <option value="">All Departments</option>
+                <option value="CSE/IT">CSE/IT</option>
+                <option value="ECE">ECE</option>
+                <option value="EEE">EEE</option>
+                <option value="MECH">MECH</option>
+            </select>
+            <select id="filterStatus" onchange="loadDashboard()">
+                <option value="">All Status</option>
+                <option value="submitted">Submitted</option>
+                <option value="saved">In Progress</option>
+            </select>
+            <button class="btn btn-secondary" onclick="loadDashboard()">🔄 Refresh</button>
+            <button class="btn btn-secondary" onclick="exportExcel()">📥 Export Excel</button>
+        </div>
+        
+        <div id="tableContainer">
+            <div class="loading"><div class="spinner"></div><p>Loading submissions...</p></div>
+        </div>
+    </div>
+</div>
+
+<!-- View Modal -->
+<div class="modal" id="viewModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>📄 Submission Details</h3>
+            <button class="modal-close" onclick="document.getElementById('viewModal').classList.remove('active')">&times;</button>
+        </div>
+        <div id="viewContent"></div>
+    </div>
+</div>
+
+<!-- Grade Modal -->
+<div class="modal" id="gradeModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>✏️ Grade Submission</h3>
+            <button class="modal-close" onclick="document.getElementById('gradeModal').classList.remove('active')">&times;</button>
+        </div>
+        <div id="gradeContent"></div>
+    </div>
+</div>
+
+<script>
+// =====================================================
+// SUPABASE CONFIG
+// =====================================================
+const SUPABASE_URL = 'https://yrwbeperjwcaylnixdxm.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlyd2JlcGVyandjYXlsbml4ZHhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgwNTcwNjEsImV4cCI6MjA4MzYzMzA2MX0.0hVzidXvnZ03C5Lj7XM9egpbbGFS5IiiOpDaVYAxYeM';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Test connection
+async function testConnection() {
+    console.log('Testing Supabase connection...');
+    try {
+        const { data, error } = await supabase.from('submissions').select('id').limit(1);
+        console.log('Connection result:', { data, error });
+        
+        if (error) {
+            console.error('Supabase error:', error);
+            // Even with error, if we got a response, connection works
+            if (error.code === 'PGRST116') {
+                // No rows found - that's fine, table is empty
+                console.log('Table is empty but connected');
+            } else {
+                throw error;
+            }
+        }
+        
+        document.getElementById('dbStatus').textContent = '🟢 Cloud Connected';
+        document.getElementById('dbStatus').className = 'db-status db-online';
+        document.getElementById('cloudStatus').textContent = '☁️ Cloud Database Connected';
+        document.getElementById('cloudStatus').style.color = '#28a745';
+        console.log('✅ Supabase connected!');
+        return true;
+    } catch (err) {
+        console.error('Supabase connection failed:', err);
+        document.getElementById('dbStatus').textContent = '🔴 Offline';
+        document.getElementById('dbStatus').className = 'db-status db-offline';
+        document.getElementById('cloudStatus').textContent = '⚠️ Connection issue - using offline mode';
+        document.getElementById('cloudStatus').style.color = '#dc3545';
+        return false;
+    }
+}
+
+// Run connection test on load
+setTimeout(testConnection, 500);
+
+// =====================================================
+// QUESTIONS
+// =====================================================
+const QUESTIONS = {
+    'CSE/IT': [],
+    'ECE': [],
+    'EEE': [],
+    'MECH': []
+};
+
+for (let i = 1; i <= 80; i++) {
+    QUESTIONS['CSE/IT'].push({
+        id: `CSE_${String(i).padStart(2, '0')}`,
+        title: `MCP Server Project ${i}`,
+        type: 'code',
+        scenario: `Build an MCP (Model Context Protocol) server with tools, async handlers, and error handling.`,
+        keywords: ['mcpserver', 'server.tool', 'async', 'await', 'try', 'catch']
+    });
+}
+
+for (let i = 1; i <= 25; i++) {
+    QUESTIONS['ECE'].push({
+        id: `ECE_${String(i).padStart(2, '0')}`,
+        title: `IoT System ${i}`,
+        type: 'simulation',
+        scenario: `Design IoT monitoring system with sensors and ESP32/Arduino.`,
+        keywords: ['sensor', 'esp32', 'arduino', 'wifi', 'mqtt']
+    });
+}
+
+for (let i = 1; i <= 10; i++) {
+    QUESTIONS['EEE'].push({
+        id: `EEE_${String(i).padStart(2, '0')}`,
+        title: `Power System ${i}`,
+        type: 'simulation',
+        scenario: `Design power monitoring/control system with sensors.`,
+        keywords: ['power', 'voltage', 'current', 'sensor', 'monitor']
+    });
+}
+
+for (let i = 1; i <= 10; i++) {
+    QUESTIONS['MECH'].push({
+        id: `MECH_${String(i).padStart(2, '0')}`,
+        title: `Smart Manufacturing ${i}`,
+        type: 'simulation',
+        scenario: `Design AI-powered quality control or predictive maintenance system.`,
+        keywords: ['sensor', 'defect', 'quality', 'ai', 'prediction']
+    });
+}
+
+// =====================================================
+// STATE
+// =====================================================
+let currentUser = null;
+let currentQuestion = null;
+let timerInterval = null;
+let startTime = null;
+let answers = {};
+let screenshot = null;
+let dashboardData = [];
+
+// =====================================================
+// EVALUATION
+// =====================================================
+function evaluate() {
+    const q = currentQuestion;
+    const breakdown = [];
+    let score = 0;
+    
+    if (q.type === 'code') {
+        const code = (answers.code || '').toLowerCase();
+        
+        let mcp = 0;
+        if (code.includes('mcpserver')) mcp += 15;
+        if (code.includes('server.tool') || code.includes('server.resource')) mcp += 10;
+        if (code.includes('async')) mcp += 5;
+        if (code.includes('await')) mcp += 5;
+        breakdown.push({ name: 'MCP Implementation', score: mcp, max: 35 });
+        score += mcp;
+        
+        let kw = 0;
+        q.keywords.forEach(k => { if (code.includes(k)) kw += 5; });
+        kw = Math.min(25, kw);
+        breakdown.push({ name: 'Keywords', score: kw, max: 25 });
+        score += kw;
+        
+        let pat = 0;
+        ['try', 'catch', 'if', 'return', 'function'].forEach(p => { if (code.includes(p)) pat += 3; });
+        pat = Math.min(15, pat);
+        breakdown.push({ name: 'Patterns', score: pat, max: 15 });
+        score += pat;
+        
+        let len = (answers.code || '').length >= 200 ? 10 : (answers.code || '').length >= 100 ? 7 : 3;
+        breakdown.push({ name: 'Completeness', score: len, max: 10 });
+        score += len;
+    } else {
+        const link = answers.link || '';
+        const desc = (answers.desc || '').toLowerCase();
+        
+        let tk = link.includes('tinkercad.com') ? 25 : (link.length > 10 ? 10 : 0);
+        breakdown.push({ name: 'Tinkercad', score: tk, max: 25 });
+        score += tk;
+        
+        let comp = 0;
+        ['sensor', 'esp32', 'arduino', 'relay', 'led', 'lcd'].forEach(c => { if (desc.includes(c)) comp += 4; });
+        comp = Math.min(20, comp);
+        breakdown.push({ name: 'Components', score: comp, max: 20 });
+        score += comp;
+        
+        let kw = 0;
+        q.keywords.forEach(k => { if (desc.includes(k)) kw += 5; });
+        kw = Math.min(25, kw);
+        breakdown.push({ name: 'Keywords', score: kw, max: 25 });
+        score += kw;
+        
+        let doc = desc.length >= 200 ? 15 : desc.length >= 100 ? 10 : 5;
+        breakdown.push({ name: 'Documentation', score: doc, max: 15 });
+        score += doc;
+    }
+    
+    const ss = screenshot ? 15 : 0;
+    breakdown.push({ name: 'Screenshot', score: ss, max: 15 });
+    score += ss;
+    
+    return { total: Math.min(100, score), breakdown };
+}
+
+// =====================================================
+// DATABASE OPERATIONS
+// =====================================================
+async function saveToDatabase(data, isSubmit = false) {
+    try {
+        const record = {
+            roll_no: data.rollNo,
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            department: data.department,
+            year: data.year,
+            question_id: data.questionId,
+            question_type: data.type,
+            status: isSubmit ? 'submitted' : 'saved',
+            answers: data.answers,
+            code_score: data.codeScore || 0,
+            screenshot_score: data.screenshotScore || 0,
+            total_score: data.totalScore,
+            time_taken: data.time
+        };
+        
+        // Upsert (update if exists, insert if not)
+        const { data: result, error } = await supabase
+            .from('submissions')
+            .upsert(record, { onConflict: 'roll_no' })
+            .select();
+        
+        if (error) throw error;
+        console.log('✅ Saved to database:', result);
+        return true;
+    } catch (err) {
+        console.error('Database save error:', err);
+        return false;
+    }
+}
+
+async function checkExistingSubmission(rollNo) {
+    try {
+        const { data, error } = await supabase
+            .from('submissions')
+            .select('*')
+            .eq('roll_no', rollNo)
+            .eq('status', 'submitted')
+            .single();
+        
+        if (error && error.code !== 'PGRST116') throw error;
+        return data;
+    } catch (err) {
+        console.error('Check submission error:', err);
+        return null;
+    }
+}
+
+async function loadSavedProgress(rollNo) {
+    try {
+        const { data, error } = await supabase
+            .from('submissions')
+            .select('*')
+            .eq('roll_no', rollNo)
+            .single();
+        
+        if (error && error.code !== 'PGRST116') throw error;
+        return data;
+    } catch (err) {
+        console.error('Load progress error:', err);
+        return null;
+    }
+}
+
+async function loadAllSubmissions(dept = null, status = null) {
+    try {
+        let query = supabase.from('submissions').select('*').order('created_at', { ascending: false });
+        
+        if (dept) query = query.eq('department', dept);
+        if (status) query = query.eq('status', status);
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Load submissions error:', err);
+        return [];
+    }
+}
+
+async function updateGrade(rollNo, manualScore, comments, gradedBy) {
+    try {
+        const { error } = await supabase
+            .from('submissions')
+            .update({ 
+                manual_score: manualScore, 
+                comments: comments,
+                graded_by: gradedBy 
+            })
+            .eq('roll_no', rollNo);
+        
+        if (error) throw error;
+        return true;
+    } catch (err) {
+        console.error('Update grade error:', err);
+        return false;
+    }
+}
+
+// =====================================================
+// LOGIN
+// =====================================================
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.remove('active');
+        if ((tab === 'learner' && i === 0) || (tab === 'facilitator' && i === 1) || (tab === 'admin' && i === 2)) {
+            t.classList.add('active');
+        }
+    });
+    document.getElementById('learnerForm').classList.add('hidden');
+    document.getElementById('facilitatorForm').classList.add('hidden');
+    document.getElementById('adminForm').classList.add('hidden');
+    document.getElementById(tab + 'Form').classList.remove('hidden');
+}
+
+async function startAssessment() {
+    const name = document.getElementById('learnerName').value.trim();
+    const rollNo = document.getElementById('rollNo').value.trim().toUpperCase();
+    const dept = document.getElementById('department').value;
+    const year = document.getElementById('year').value;
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    
+    if (!name || !rollNo || !dept || !year || !email || !phone) {
+        alert('Please fill all fields');
+        return;
+    }
+    
+    // Check if already submitted in database
+    const existing = await checkExistingSubmission(rollNo);
+    if (existing) {
+        alert(`Already submitted!\n\nScore: ${existing.total_score}/100\nSubmitted at: ${new Date(existing.created_at).toLocaleString()}`);
+        return;
+    }
+    
+    // Assign question based on roll number
+    const qs = QUESTIONS[dept];
+    const idx = Math.abs(rollNo.split('').reduce((s, c) => s + c.charCodeAt(0), 0)) % qs.length;
+    
+    currentQuestion = qs[idx];
+    currentUser = { name, rollNo, dept, year, email, phone };
+    
+    // Load saved progress from database
+    const saved = await loadSavedProgress(rollNo);
+    if (saved && saved.answers) {
+        answers = saved.answers;
+        alert('📝 Your previous progress has been loaded!');
+    }
+    
+    showAssessment();
+}
+
+function loginFacilitator() {
+    const codes = { 'CSE/IT': 'CSE2025', 'ECE': 'ECE2025', 'EEE': 'EEE2025', 'MECH': 'MECH2025' };
+    const name = document.getElementById('facName').value.trim();
+    const dept = document.getElementById('facDept').value;
+    const code = document.getElementById('facCode').value;
+    
+    if (!name || !dept || codes[dept] !== code) {
+        alert('Invalid credentials');
+        return;
+    }
+    
+    currentUser = { type: 'facilitator', name, dept };
+    showDashboard();
+}
+
+function loginAdmin() {
+    if (document.getElementById('adminEmail').value === 'admin@jkkn.edu' && document.getElementById('adminPass').value === 'JKKN@2025') {
+        currentUser = { type: 'admin', name: 'Administrator' };
+        showDashboard();
+    } else {
+        alert('Invalid credentials');
+    }
+}
+
+function logout() {
+    currentUser = null;
+    currentQuestion = null;
+    answers = {};
+    screenshot = null;
+    if (timerInterval) clearInterval(timerInterval);
+    
+    document.getElementById('loginPage').classList.remove('hidden');
+    document.getElementById('assessmentPage').classList.add('hidden');
+    document.getElementById('dashboardPage').classList.add('hidden');
+    document.getElementById('userBadge').textContent = '';
+    document.getElementById('logoutBtn').style.display = 'none';
+}
+
+// =====================================================
+// ASSESSMENT
+// =====================================================
+function showAssessment() {
+    document.getElementById('loginPage').classList.add('hidden');
+    document.getElementById('assessmentPage').classList.remove('hidden');
+    document.getElementById('userBadge').textContent = currentUser.name;
+    document.getElementById('logoutBtn').style.display = 'block';
+    
+    document.getElementById('qBadge').textContent = currentQuestion.id;
+    document.getElementById('qTitle').textContent = currentQuestion.title;
+    document.getElementById('qScenario').textContent = currentQuestion.scenario;
+    
+    renderTasks();
+    startTimer();
+}
+
+function renderTasks() {
+    const area = document.getElementById('tasksArea');
+    
+    if (currentQuestion.type === 'code') {
+        area.innerHTML = `
+            <div class="task-section">
+                <div class="task-header">
+                    <span class="task-title">📝 MCP Server Code</span>
+                    <span class="task-marks">85 marks</span>
+                </div>
+                <textarea class="code-editor" id="codeInput" placeholder="// Write your MCP server code here
+import { MCPServer } from '@modelcontextprotocol/sdk';
+
+const server = new MCPServer({
+    name: 'my-server'
+});
+
+server.tool('myTool', async (params) => {
+    try {
+        return { success: true };
+    } catch (error) {
+        return { error: error.message };
+    }
+});" oninput="updateChecklist()">${answers.code || ''}</textarea>
+            </div>
+            
+            <div class="screenshot-section">
+                <h3>📸 Screenshot (15 marks)</h3>
+                <div class="upload-area ${screenshot ? 'has-file' : ''}" onclick="document.getElementById('ssFile').click()">
+                    <div class="upload-icon">${screenshot ? '✅' : '📷'}</div>
+                    <div>${screenshot ? 'Uploaded!' : 'Click to upload'}</div>
+                </div>
+                <input type="file" id="ssFile" accept="image/*" style="display:none" onchange="handleFile(event)">
+                <div class="preview-box ${screenshot ? 'active' : ''}" id="previewBox">
+                    <img class="preview-img" id="previewImg" src="${screenshot || ''}">
+                    <button class="btn btn-secondary" style="margin-top:0.5rem" onclick="removeFile();event.stopPropagation()">Remove</button>
+                </div>
+            </div>
+        `;
+    } else {
+        area.innerHTML = `
+            <div class="task-section">
+                <div class="task-header">
+                    <span class="task-title">🔗 Tinkercad Link</span>
+                    <span class="task-marks">25 marks</span>
+                </div>
+                <input type="url" id="linkInput" style="width:100%;padding:0.7rem;border:2px solid #e0e0e0;border-radius:6px"
+                    placeholder="https://www.tinkercad.com/things/..." 
+                    value="${answers.link || ''}" oninput="updateChecklist()">
+            </div>
+            
+            <div class="task-section">
+                <div class="task-header">
+                    <span class="task-title">📄 Documentation</span>
+                    <span class="task-marks">60 marks</span>
+                </div>
+                <textarea class="text-area" id="descInput" placeholder="Describe your design..." oninput="updateChecklist()">${answers.desc || ''}</textarea>
+            </div>
+            
+            <div class="screenshot-section">
+                <h3>📸 Screenshot (15 marks)</h3>
+                <div class="upload-area ${screenshot ? 'has-file' : ''}" onclick="document.getElementById('ssFile').click()">
+                    <div class="upload-icon">${screenshot ? '✅' : '📷'}</div>
+                    <div>${screenshot ? 'Uploaded!' : 'Click to upload'}</div>
+                </div>
+                <input type="file" id="ssFile" accept="image/*" style="display:none" onchange="handleFile(event)">
+                <div class="preview-box ${screenshot ? 'active' : ''}" id="previewBox">
+                    <img class="preview-img" id="previewImg" src="${screenshot || ''}">
+                </div>
+            </div>
+        `;
+    }
+    
+    updateChecklist();
+}
+
+function handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert('Max 5MB'); return; }
+    
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        screenshot = ev.target.result;
+        renderTasks();
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeFile() {
+    screenshot = null;
+    renderTasks();
+}
+
+function updateChecklist() {
+    const items = document.getElementById('checklistItems');
+    
+    if (currentQuestion.type === 'code') {
+        const code = document.getElementById('codeInput')?.value || '';
+        items.innerHTML = `
+            <div class="check-item ${code.length >= 50 ? 'done' : ''}">
+                ${code.length >= 50 ? '✅' : '⬜'} Code (${code.length}/50 min)
+            </div>
+            <div class="check-item ${screenshot ? 'done' : ''}">
+                ${screenshot ? '✅' : '⬜'} Screenshot
+            </div>
+        `;
+    } else {
+        const link = document.getElementById('linkInput')?.value || '';
+        const desc = document.getElementById('descInput')?.value || '';
+        items.innerHTML = `
+            <div class="check-item ${link.length > 10 ? 'done' : ''}">
+                ${link.length > 10 ? '✅' : '⬜'} Link
+            </div>
+            <div class="check-item ${desc.length >= 50 ? 'done' : ''}">
+                ${desc.length >= 50 ? '✅' : '⬜'} Docs (${desc.length}/50 min)
+            </div>
+            <div class="check-item ${screenshot ? 'done' : ''}">
+                ${screenshot ? '✅' : '⬜'} Screenshot
+            </div>
+        `;
+    }
+}
+
+function startTimer() {
+    startTime = Date.now();
+    timerInterval = setInterval(() => {
+        const s = Math.floor((Date.now() - startTime) / 1000);
+        const h = String(Math.floor(s / 3600)).padStart(2, '0');
+        const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+        const sec = String(s % 60).padStart(2, '0');
+        document.getElementById('timer').textContent = `${h}:${m}:${sec}`;
+    }, 1000);
+}
+
+function collectAnswers() {
+    if (currentQuestion.type === 'code') {
+        answers.code = document.getElementById('codeInput')?.value || '';
+    } else {
+        answers.link = document.getElementById('linkInput')?.value || '';
+        answers.desc = document.getElementById('descInput')?.value || '';
+    }
+}
+
+// =====================================================
+// SAVE
+// =====================================================
+async function saveWork() {
+    collectAnswers();
+    
+    const result = evaluate();
+    
+    const data = {
+        rollNo: currentUser.rollNo,
+        name: currentUser.name,
+        email: currentUser.email,
+        phone: currentUser.phone,
+        department: currentUser.dept,
+        year: currentUser.year,
+        questionId: currentQuestion.id,
+        type: currentQuestion.type,
+        answers: { ...answers },
+        codeScore: result.total - (screenshot ? 15 : 0),
+        screenshotScore: screenshot ? 15 : 0,
+        totalScore: result.total,
+        time: document.getElementById('timer').textContent
+    };
+    
+    document.getElementById('saveStatus').innerHTML = '⏳ Saving to cloud...';
+    
+    const success = await saveToDatabase(data, false);
+    
+    if (success) {
+        document.getElementById('saveStatus').innerHTML = `<span class="saved">✅ Saved to cloud! Score: ${result.total}/100</span>`;
+        alert('✅ Progress saved to cloud!\n\nScore: ' + result.total + '/100\n\nYou can continue from any device.');
+    } else {
+        document.getElementById('saveStatus').innerHTML = '❌ Save failed - try again';
+        alert('❌ Could not save to cloud. Please try again.');
+    }
+}
+
+// =====================================================
+// FINAL SUBMIT
+// =====================================================
+async function finalSubmit() {
+    collectAnswers();
+    
+    // Validate
+    if (currentQuestion.type === 'code') {
+        if ((answers.code || '').length < 50) {
+            alert('Please write at least 50 characters of code');
+            return;
+        }
+    } else {
+        if (!(answers.link || '').length || (answers.desc || '').length < 50) {
+            alert('Please provide Tinkercad link and documentation (50+ chars)');
+            return;
+        }
+    }
+    
+    // Confirm
+    if (!confirm('🚨 FINAL SUBMISSION\n\nThis CANNOT be undone!\n\nClick OK to submit.')) {
+        return;
+    }
+    
+    // Evaluate
+    const result = evaluate();
+    
+    const data = {
+        rollNo: currentUser.rollNo,
+        name: currentUser.name,
+        email: currentUser.email,
+        phone: currentUser.phone,
+        department: currentUser.dept,
+        year: currentUser.year,
+        questionId: currentQuestion.id,
+        type: currentQuestion.type,
+        answers: { ...answers },
+        codeScore: result.total - (screenshot ? 15 : 0),
+        screenshotScore: screenshot ? 15 : 0,
+        totalScore: result.total,
+        time: document.getElementById('timer').textContent
+    };
+    
+    // Save to database
+    const success = await saveToDatabase(data, true);
+    
+    if (success) {
+        showResult(result);
+    } else {
+        alert('❌ Submission failed. Please try again.');
+    }
+}
+
+function showResult(result) {
+    const icon = result.total >= 70 ? '🎉' : result.total >= 40 ? '👍' : '📝';
+    const title = result.total >= 70 ? 'Excellent!' : result.total >= 40 ? 'Good Job!' : 'Submitted!';
+    
+    document.getElementById('resIcon').textContent = icon;
+    document.getElementById('resTitle').textContent = title;
+    document.getElementById('resScore').textContent = result.total + '/100';
+    
+    let html = '<h4>Score Breakdown</h4>';
+    result.breakdown.forEach(b => {
+        html += `<div class="bd-row"><span>${b.name}</span><span>${b.score}/${b.max}</span></div>`;
+    });
+    html += `<div class="bd-row total"><span>TOTAL</span><span>${result.total}/100</span></div>`;
+    document.getElementById('resBreakdown').innerHTML = html;
+    
+    const modal = document.getElementById('resultOverlay');
+    modal.style.display = 'flex';
+    modal.classList.add('show');
+}
+
+function closeResultAndLogout() {
+    document.getElementById('resultOverlay').style.display = 'none';
+    document.getElementById('resultOverlay').classList.remove('show');
+    logout();
+}
+
+// =====================================================
+// DASHBOARD
+// =====================================================
+async function showDashboard() {
+    document.getElementById('loginPage').classList.add('hidden');
+    document.getElementById('dashboardPage').classList.remove('hidden');
+    document.getElementById('userBadge').textContent = currentUser.name + (currentUser.type === 'facilitator' ? ` (${currentUser.dept})` : ' (Admin)');
+    document.getElementById('logoutBtn').style.display = 'block';
+    
+    // Set filter for facilitator
+    if (currentUser.type === 'facilitator') {
+        document.getElementById('filterDept').value = currentUser.dept;
+        document.getElementById('filterDept').disabled = true;
+    }
+    
+    await loadDashboard();
+}
+
+async function loadDashboard() {
+    document.getElementById('tableContainer').innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading from cloud...</p></div>';
+    
+    const dept = document.getElementById('filterDept').value || (currentUser.type === 'facilitator' ? currentUser.dept : null);
+    const status = document.getElementById('filterStatus').value || null;
+    
+    dashboardData = await loadAllSubmissions(dept, status);
+    
+    // Calculate stats
+    const total = dashboardData.length;
+    const submitted = dashboardData.filter(s => s.status === 'submitted');
+    const avgScore = submitted.length ? Math.round(submitted.reduce((sum, s) => sum + (s.total_score || 0), 0) / submitted.length) : 0;
+    const passed = dashboardData.filter(s => (s.total_score || 0) >= 40).length;
+    
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statAvg').textContent = avgScore + '%';
+    document.getElementById('statSubmitted').textContent = submitted.length;
+    document.getElementById('statPassed').textContent = passed;
+    
+    // Render table
+    if (dashboardData.length === 0) {
+        document.getElementById('tableContainer').innerHTML = '<div class="loading"><p>No submissions yet</p></div>';
+        return;
+    }
+    
+    let html = `<table>
+        <thead>
+            <tr><th>Name</th><th>Roll No</th><th>Dept</th><th>Question</th><th>Score</th><th>Status</th><th>Time</th><th>Actions</th></tr>
+        </thead>
+        <tbody>`;
+    
+    dashboardData.forEach(s => {
+        const sc = s.total_score || 0;
+        const cls = sc >= 70 ? 'score-high' : sc >= 40 ? 'score-medium' : 'score-low';
+        const stCls = s.status === 'submitted' ? 'status-submitted' : 'status-saved';
+        
+        html += `<tr>
+            <td><strong>${s.name}</strong></td>
+            <td>${s.roll_no}</td>
+            <td>${s.department}</td>
+            <td>${s.question_id}</td>
+            <td><span class="score-badge ${cls}">${sc}/100</span></td>
+            <td><span class="status-badge ${stCls}">${s.status}</span></td>
+            <td>${s.time_taken || '-'}</td>
+            <td>
+                <button class="btn btn-secondary" style="padding:0.3rem 0.6rem;font-size:0.75rem" onclick="viewSubmission('${s.roll_no}')">View</button>
+                <button class="btn btn-primary" style="padding:0.3rem 0.6rem;font-size:0.75rem" onclick="gradeSubmission('${s.roll_no}')">Grade</button>
+            </td>
+        </tr>`;
+    });
+    
+    html += '</tbody></table>';
+    document.getElementById('tableContainer').innerHTML = html;
+}
+
+function viewSubmission(rollNo) {
+    const s = dashboardData.find(x => x.roll_no === rollNo);
+    if (!s) return;
+    
+    const answers = s.answers || {};
+    
+    let html = `
+        <p><strong>Student:</strong> ${s.name} (${s.roll_no})</p>
+        <p><strong>Email:</strong> ${s.email}</p>
+        <p><strong>Phone:</strong> ${s.phone}</p>
+        <p><strong>Department:</strong> ${s.department}</p>
+        <p><strong>Question:</strong> ${s.question_id}</p>
+        <p><strong>Status:</strong> <span class="status-badge ${s.status === 'submitted' ? 'status-submitted' : 'status-saved'}">${s.status}</span></p>
+        <p><strong>Auto Score:</strong> <span class="score-badge ${s.total_score >= 70 ? 'score-high' : s.total_score >= 40 ? 'score-medium' : 'score-low'}">${s.total_score}/100</span></p>
+        ${s.manual_score ? `<p><strong>Manual Score:</strong> ${s.manual_score}/100 (by ${s.graded_by})</p>` : ''}
+        ${s.comments ? `<p><strong>Comments:</strong> ${s.comments}</p>` : ''}
+        <p><strong>Time:</strong> ${s.time_taken || '-'}</p>
+        <p><strong>Submitted:</strong> ${new Date(s.created_at).toLocaleString()}</p>
+    `;
+    
+    if (s.question_type === 'code') {
+        html += `<h4 style="margin-top:1rem">Code</h4><pre>${(answers.code || '').replace(/</g, '&lt;')}</pre>`;
+    } else {
+        html += `<h4 style="margin-top:1rem">Tinkercad Link</h4><p><a href="${answers.link || '#'}" target="_blank">${answers.link || 'N/A'}</a></p>`;
+        html += `<h4>Documentation</h4><pre style="background:#f5f5f5;color:#333">${(answers.desc || '').replace(/</g, '&lt;')}</pre>`;
+    }
+    
+    document.getElementById('viewContent').innerHTML = html;
+    document.getElementById('viewModal').classList.add('active');
+}
+
+function gradeSubmission(rollNo) {
+    const s = dashboardData.find(x => x.roll_no === rollNo);
+    if (!s) return;
+    
+    document.getElementById('gradeContent').innerHTML = `
+        <p><strong>${s.name}</strong> (${s.roll_no})</p>
+        <p>Auto Score: ${s.total_score}/100</p>
+        <div class="form-group" style="margin-top:1rem">
+            <label>Manual Score (0-100)</label>
+            <input type="number" id="manualScore" min="0" max="100" value="${s.manual_score || s.total_score}">
+        </div>
+        <div class="form-group">
+            <label>Comments</label>
+            <textarea id="gradeComments" class="text-area" style="min-height:80px">${s.comments || ''}</textarea>
+        </div>
+        <button class="btn btn-primary btn-lg" style="width:100%" onclick="saveGrade('${rollNo}')">💾 Save Grade</button>
+    `;
+    document.getElementById('gradeModal').classList.add('active');
+}
+
+async function saveGrade(rollNo) {
+    const score = parseInt(document.getElementById('manualScore').value);
+    if (isNaN(score) || score < 0 || score > 100) {
+        alert('Enter valid score (0-100)');
+        return;
+    }
+    
+    const comments = document.getElementById('gradeComments').value;
+    const success = await updateGrade(rollNo, score, comments, currentUser.name);
+    
+    if (success) {
+        alert('✅ Grade saved to cloud!');
+        document.getElementById('gradeModal').classList.remove('active');
+        loadDashboard();
+    } else {
+        alert('❌ Failed to save grade');
+    }
+}
+
+function exportExcel() {
+    const rows = dashboardData.map(s => ({
+        'Name': s.name,
+        'Roll No': s.roll_no,
+        'Email': s.email,
+        'Phone': s.phone,
+        'Department': s.department,
+        'Year': s.year,
+        'Question': s.question_id,
+        'Auto Score': s.total_score || 0,
+        'Manual Score': s.manual_score || '',
+        'Status': s.status,
+        'Time': s.time_taken || '',
+        'Graded By': s.graded_by || '',
+        'Comments': s.comments || ''
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Submissions');
+    XLSX.writeFile(wb, `JKKN_Assessment_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+// =====================================================
+// INIT
+// =====================================================
+console.log('🎓 JKKN Portal with Supabase Ready');
+
+</script>
+</body>
+</html>
