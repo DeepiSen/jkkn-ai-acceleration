@@ -1167,7 +1167,8 @@ async function saveToDatabase(data, isSubmit = false) {
 
 async function checkExistingSubmission(rollNo) {
     try {
-        const data = await supabaseRequest(`submissions?roll_no=eq.${encodeURIComponent(rollNo)}&status=eq.submitted&select=*`);
+        // Check for ANY existing submission (saved or submitted)
+        const data = await supabaseRequest(`submissions?roll_no=eq.${encodeURIComponent(rollNo)}&select=*`);
         return data && data.length > 0 ? data[0] : null;
     } catch (err) {
         console.error('Check submission error:', err.message);
@@ -1242,28 +1243,161 @@ async function startAssessment() {
         return;
     }
     
-    // Check if already submitted
-    const existing = await checkExistingSubmission(rollNo);
-    if (existing) {
-        alert(`Already submitted!\n\nScore: ${existing.total_score}/100\nTime: ${existing.time_taken}`);
-        return;
+    // Show loading
+    const loginBtn = document.querySelector('#learnerForm .btn-primary');
+    loginBtn.innerHTML = '⏳ Assigning question...';
+    loginBtn.disabled = true;
+    
+    try {
+        // Check if already submitted
+        const existing = await checkExistingSubmission(rollNo);
+        if (existing) {
+            if (existing.status === 'submitted') {
+                alert(`Already submitted!\n\nScore: ${existing.total_score}/100\nTime: ${existing.time_taken}`);
+                resetLoginButton();
+                return;
+            } else {
+                // Resume with same question (status is 'saved' or 'in_progress')
+                currentQuestion = QUESTIONS[dept].find(q => q.id === existing.question_id);
+                if (!currentQuestion) {
+                    currentQuestion = QUESTIONS[dept][0];
+                }
+                currentUser = { name, rollNo, dept, year, email, phone };
+                answers = existing.answers || {};
+                // Remove evaluation metadata from answers for editing
+                delete answers._evaluation;
+                if (existing.status === 'saved') {
+                    alert('📝 Resuming your saved progress!');
+                }
+                showAssessment();
+                return;
+            }
+        }
+        
+        // Assign UNIQUE question - check which questions are already taken
+        const qs = QUESTIONS[dept];
+        const assignedQuestion = await assignUniqueQuestion(dept, rollNo, qs);
+        
+        if (!assignedQuestion) {
+            alert('❌ All questions for your department are currently assigned. Please contact your facilitator.');
+            resetLoginButton();
+            return;
+        }
+        
+        currentQuestion = assignedQuestion;
+        currentUser = { name, rollNo, dept, year, email, phone };
+        
+        // 🔒 IMMEDIATELY RESERVE the question in database
+        const reserved = await reserveQuestion({
+            rollNo, name, email, phone, dept, year,
+            questionId: currentQuestion.id,
+            type: currentQuestion.type
+        });
+        
+        if (!reserved) {
+            // Someone else got this question, try again
+            console.warn('⚠️ Question was taken, retrying...');
+            const retryQuestion = await assignUniqueQuestion(dept, rollNo, qs);
+            if (retryQuestion) {
+                currentQuestion = retryQuestion;
+                await reserveQuestion({
+                    rollNo, name, email, phone, dept, year,
+                    questionId: currentQuestion.id,
+                    type: currentQuestion.type
+                });
+            }
+        }
+        
+        showAssessment();
+        
+    } catch (err) {
+        console.error('Login error:', err);
+        alert('Error during login. Please try again.');
+        resetLoginButton();
     }
-    
-    // Assign question based on roll number
-    const qs = QUESTIONS[dept];
-    const idx = Math.abs(rollNo.split('').reduce((s, c) => s + c.charCodeAt(0), 0)) % qs.length;
-    
-    currentQuestion = qs[idx];
-    currentUser = { name, rollNo, dept, year, email, phone };
-    
-    // Load saved progress
-    const saved = await loadSavedProgress(rollNo);
-    if (saved && saved.answers) {
-        answers = saved.answers;
-        alert('📝 Your previous progress has been loaded!');
+}
+
+function resetLoginButton() {
+    const btn = document.querySelector('#learnerForm .btn-primary');
+    if (btn) {
+        btn.innerHTML = '🚀 Start Assessment';
+        btn.disabled = false;
     }
-    
-    showAssessment();
+}
+
+// Get unique question not taken by other students
+async function assignUniqueQuestion(dept, rollNo, questions) {
+    try {
+        // Get all taken question IDs for this department
+        const taken = await supabaseRequest(
+            `submissions?department=eq.${encodeURIComponent(dept)}&select=question_id,roll_no`
+        );
+        
+        const takenQuestionIds = new Set();
+        if (taken && taken.length > 0) {
+            taken.forEach(s => {
+                // Don't count the current student's saved progress
+                if (s.roll_no !== rollNo && s.question_id) {
+                    takenQuestionIds.add(s.question_id);
+                }
+            });
+        }
+        
+        console.log(`📊 ${dept}: ${takenQuestionIds.size} questions taken, ${questions.length} total`);
+        
+        // Find available questions
+        const available = questions.filter(q => !takenQuestionIds.has(q.id));
+        
+        if (available.length === 0) {
+            console.warn('⚠️ All questions taken! Allowing duplicates...');
+            // Fallback: assign based on roll number hash if all taken
+            const idx = Math.abs(rollNo.split('').reduce((s, c) => s + c.charCodeAt(0), 0)) % questions.length;
+            return questions[idx];
+        }
+        
+        // Assign from available questions using roll number hash for consistency
+        const idx = Math.abs(rollNo.split('').reduce((s, c) => s + c.charCodeAt(0), 0)) % available.length;
+        
+        console.log(`✅ Assigned question: ${available[idx].id}`);
+        return available[idx];
+        
+    } catch (err) {
+        console.error('Question assignment error:', err);
+        // Fallback to hash-based assignment
+        const idx = Math.abs(rollNo.split('').reduce((s, c) => s + c.charCodeAt(0), 0)) % questions.length;
+        return questions[idx];
+    }
+}
+
+// 🔒 IMMEDIATELY reserve question in database (prevents race condition)
+async function reserveQuestion(data) {
+    try {
+        const record = {
+            roll_no: data.rollNo,
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            department: data.dept,
+            year: data.year,
+            question_id: data.questionId,
+            question_type: data.type,
+            status: 'in_progress',
+            answers: {},
+            code_score: 0,
+            screenshot_score: 0,
+            total_score: 0,
+            time_taken: '00:00:00'
+        };
+        
+        // Try to insert - will fail if roll_no already exists (unique constraint)
+        await supabaseRequest('submissions', 'POST', record);
+        console.log(`🔒 Reserved question ${data.questionId} for ${data.rollNo}`);
+        return true;
+        
+    } catch (err) {
+        console.error('Reserve question error:', err);
+        return false;
+    }
 }
 
 function loginFacilitator() {
