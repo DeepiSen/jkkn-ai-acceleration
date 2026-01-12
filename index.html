@@ -7,7 +7,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; overflow-y: auto; }
         
         .header {
             background: linear-gradient(135deg, #003D5B, #00587a);
@@ -86,6 +86,11 @@
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         
         /* Assessment */
+        #assessmentPage {
+            min-height: 100vh;
+            overflow-y: auto;
+        }
+        
         .assessment-layout {
             display: grid;
             grid-template-columns: 250px 1fr;
@@ -93,7 +98,7 @@
             padding: 1rem;
             max-width: 1400px;
             margin: 0 auto;
-            min-height: calc(100vh - 80px);
+            align-items: start;
         }
         
         .sidebar {
@@ -104,6 +109,44 @@
             height: fit-content;
             position: sticky;
             top: 1rem;
+        }
+        
+        .main-content {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            overflow: visible;
+            min-height: auto;
+        }
+        
+        .scenario-box {
+            background: linear-gradient(135deg, #e8f4f8, #f0f7fa);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 5px solid #00A7E1;
+            margin-bottom: 1.5rem;
+        }
+        .scenario-box h2 { 
+            color: #003D5B; 
+            margin-bottom: 1rem; 
+            font-size: 1.4rem; 
+            font-weight: 700; 
+        }
+        .scenario-box .scenario-content { 
+            font-size: 1rem; 
+            line-height: 2; 
+            color: #333;
+        }
+        .scenario-box .scenario-content strong {
+            color: #003D5B;
+        }
+        .scenario-box .scenario-content ul {
+            margin: 0.5rem 0 0.5rem 1.5rem;
+            padding: 0;
+        }
+        .scenario-box .scenario-content li {
+            margin: 0.3rem 0;
         }
         
         .q-badge {
@@ -135,23 +178,6 @@
         .checklist h4 { margin-bottom: 0.5rem; font-size: 0.95rem; }
         .check-item { padding: 0.25rem 0; font-size: 0.9rem; }
         .check-item.done { color: #28a745; }
-        
-        .main-content {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        }
-        
-        .scenario-box {
-            background: linear-gradient(135deg, #e8f4f8, #f0f7fa);
-            padding: 1rem;
-            border-radius: 12px;
-            border-left: 5px solid #00A7E1;
-            margin-bottom: 1rem;
-        }
-        .scenario-box h2 { color: #003D5B; margin-bottom: 0.5rem; font-size: 1.2rem; }
-        .scenario-box p { font-size: 0.95rem; line-height: 1.6; }
         
         .task-section {
             border: 2px solid #e0e0e0;
@@ -388,8 +414,9 @@
             .sidebar > div:last-child { grid-column: span 2; }
             .timer { font-size: 1.2rem; }
             .main-content { padding: 1rem; }
-            .scenario-box { padding: 0.8rem; }
-            .scenario-box h2 { font-size: 1.1rem; }
+            .scenario-box { padding: 1rem; }
+            .scenario-box h2 { font-size: 1.2rem; }
+            .scenario-box .scenario-content { font-size: 0.95rem; line-height: 1.8; }
             .task-section { padding: 0.8rem; }
             .code-editor { min-height: 150px; font-size: 12px; }
             .text-area { min-height: 100px; }
@@ -565,7 +592,7 @@
         <main class="main-content">
             <div class="scenario-box">
                 <h2 id="qTitle">Loading...</h2>
-                <p id="qScenario" style="color:#444;line-height:1.8"></p>
+                <div id="qScenario" style="color:#333;line-height:1.8"></div>
             </div>
 
             <div id="tasksArea"></div>
@@ -855,7 +882,21 @@ for (let i = 1; i <= 80; i++) {
         id: id,
         title: ak.title,
         type: 'code',
-        scenario: `Build an MCP Server for "${ak.title}". Required tools: ${ak.requiredTools.slice(0, 3).join(', ')}...`,
+        scenario: `🎯 **Your Task:** Build an MCP (Model Context Protocol) Server for "${ak.title}"
+
+📋 **Required Tools to Implement:**
+• ${ak.requiredTools.join('\n• ')}
+
+💡 **Key Requirements:**
+1. Use MCPServer from @modelcontextprotocol/sdk
+2. Implement all required tools using server.tool()
+3. Include proper async/await handling
+4. Add try-catch error handling for each tool
+5. Return meaningful responses
+
+📝 **Expected Functions:** ${ak.expectedFunctions.join(', ')}
+
+⚠️ **Important:** Your code should be production-ready with proper error handling and clear documentation.`,
         keywords: ak.requiredKeywords,
         answerKey: ak
     });
@@ -869,7 +910,22 @@ for (let i = 1; i <= 25; i++) {
         id: id,
         title: ak.title,
         type: 'simulation',
-        scenario: `Design "${ak.title}" using IoT sensors and microcontrollers. Required: ${ak.requiredComponents.slice(0, 3).join(', ')}...`,
+        scenario: `🎯 **Your Task:** Design and simulate "${ak.title}" in Tinkercad
+
+📋 **Required Components:**
+• ${ak.requiredComponents.join('\n• ')}
+
+💡 **Documentation Must Include:**
+1. **Component List** - All parts used with specifications
+2. **Working Principle** - How the system operates
+3. **Circuit Connections** - Pin-by-pin connections
+4. **Algorithm/Logic** - Step-by-step operation
+5. **Power Requirements** - Voltage, current needs
+6. **Cost Estimation** - Approximate budget
+
+📝 **Key Features to Implement:** ${ak.requiredKeywords.slice(0, 5).join(', ')}
+
+⚠️ **Important:** Create a working simulation in Tinkercad and provide the shareable link.`,
         keywords: ak.requiredKeywords,
         answerKey: ak
     });
@@ -883,7 +939,22 @@ for (let i = 1; i <= 10; i++) {
         id: id,
         title: ak.title,
         type: 'simulation',
-        scenario: `Design "${ak.title}" for power system monitoring. Required: ${ak.requiredComponents.slice(0, 3).join(', ')}...`,
+        scenario: `🎯 **Your Task:** Design and simulate "${ak.title}" for Power System Monitoring
+
+📋 **Required Components:**
+• ${ak.requiredComponents.join('\n• ')}
+
+💡 **Documentation Must Include:**
+1. **Component List** - All parts with ratings
+2. **Working Principle** - System operation
+3. **Circuit Design** - Schematic connections
+4. **Algorithm** - Control/monitoring logic
+5. **Safety Features** - Protection mechanisms
+6. **Cost Analysis** - Implementation budget
+
+📝 **Key Features:** ${ak.requiredKeywords.slice(0, 5).join(', ')}
+
+⚠️ **Important:** Create a working Tinkercad simulation and provide the shareable link.`,
         keywords: ak.requiredKeywords,
         answerKey: ak
     });
@@ -897,7 +968,22 @@ for (let i = 1; i <= 10; i++) {
         id: id,
         title: ak.title,
         type: 'simulation',
-        scenario: `Design "${ak.title}" for smart manufacturing. Required: ${ak.requiredComponents.slice(0, 3).join(', ')}...`,
+        scenario: `🎯 **Your Task:** Design "${ak.title}" for Smart Manufacturing/AI-Powered System
+
+📋 **Required Components:**
+• ${ak.requiredComponents.join('\n• ')}
+
+💡 **Documentation Must Include:**
+1. **Component List** - All parts with specifications
+2. **Working Principle** - System operation flow
+3. **Circuit/Mechanism** - Design connections
+4. **Algorithm** - AI/Control logic
+5. **Deployment Strategy** - Installation plan
+6. **ROI Analysis** - Cost-benefit calculation
+
+📝 **Key Features:** ${ak.requiredKeywords.slice(0, 5).join(', ')}
+
+⚠️ **Important:** Create a working Tinkercad simulation and provide the shareable link.`,
         keywords: ak.requiredKeywords,
         answerKey: ak
     });
@@ -1449,7 +1535,31 @@ function showAssessment() {
     
     document.getElementById('qBadge').textContent = currentQuestion.id;
     document.getElementById('qTitle').textContent = currentQuestion.title;
-    document.getElementById('qScenario').textContent = currentQuestion.scenario;
+    
+    // Format scenario with proper HTML structure
+    const scenarioText = currentQuestion.scenario || '';
+    
+    // Convert markdown-like syntax to HTML
+    let formatted = scenarioText
+        // Convert **bold** to <strong>
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#003D5B">$1</strong>')
+        // Convert bullet points (• or lines starting with numbers)
+        .replace(/^(\d+)\.\s+/gm, '<strong>$1.</strong> ')
+        // Convert `code` to styled code
+        .replace(/`(.*?)`/g, '<code style="background:#e8e8e8;padding:2px 6px;border-radius:4px;font-family:monospace">$1</code>')
+        // Convert line breaks
+        .replace(/\n\n/g, '</p><p style="margin:0.8rem 0">')
+        .replace(/\n/g, '<br>');
+    
+    document.getElementById('qScenario').innerHTML = `
+        <div class="scenario-content" style="font-size:1.05rem;line-height:2;color:#333">
+            <p style="margin:0">${formatted}</p>
+        </div>
+    `;
+    
+    // Scroll to top of assessment page
+    document.getElementById('assessmentPage').scrollTop = 0;
+    window.scrollTo(0, 0);
     
     renderTasks();
     startTimer();
